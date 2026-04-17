@@ -18,6 +18,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "127.0.0.1:3306:3306"
     healthcheck:
@@ -167,9 +168,15 @@ services:
       redis: { condition: service_healthy }
     environment:
       APP_ENV: testing
+      APP_KEY: ${APP_KEY:-base64:SmFydFBhcmtEZXZLZXlTbWFydFBhcmtEZXZLZXk=}
       DB_HOST: mysql
       DB_DATABASE: smartpark_test
+      DB_USERNAME: smartpark
+      DB_PASSWORD: ${MYSQL_PASSWORD:-smartpark_dev}
       REDIS_HOST: redis
+      QUEUE_CONNECTION: sync
+      CACHE_STORE: array
+      SESSION_DRIVER: array
     volumes:
       - ./backend:/var/www/html
       - ./api-tests:/tests/api

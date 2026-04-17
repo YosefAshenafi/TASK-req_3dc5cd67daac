@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import type { User, CreateUserRequest } from '@/types/api'
-import { usersApi } from '@/services/api'
-import { ApiError } from '@/services/api'
+import { usersApi, ApiError } from '@/services/api'
 import { useUiStore } from '@/stores/ui'
+import { UserPlus, Search, ChevronDown, ShieldAlert, Trash2, Snowflake, RotateCcw, Loader2 } from 'lucide-vue-next'
 
 const uiStore = useUiStore()
 
@@ -13,27 +13,25 @@ const filterRole = ref<string>('')
 const filterStatus = ref<string>('')
 const showCreateForm = ref(false)
 
-// Create form
 const newUsername = ref('')
 const newPassword = ref('')
 const newRole = ref<'user' | 'admin' | 'technician'>('user')
 const creating = ref(false)
 const createError = ref('')
 
-// Freeze form
 const freezingUserId = ref<number | null>(null)
 const freezeDuration = ref(72)
 const actionLoading = ref<number | null>(null)
 
-const filteredUsers = computed(() => {
-  return users.value.filter((u) => {
+const filteredUsers = computed(() =>
+  users.value.filter((u) => {
     if (filterRole.value && u.role !== filterRole.value) return false
     if (filterStatus.value === 'frozen' && !u.frozen_until) return false
     if (filterStatus.value === 'blacklisted' && !u.blacklisted_at) return false
     if (filterStatus.value === 'active' && (u.frozen_until || u.blacklisted_at || u.deleted_at)) return false
     return true
   })
-})
+)
 
 async function fetchUsers() {
   loading.value = true
@@ -66,11 +64,7 @@ async function handleCreate() {
     showCreateForm.value = false
     uiStore.addNotification({ type: 'success', message: 'User created' })
   } catch (err) {
-    if (err instanceof ApiError) {
-      createError.value = err.body?.message ?? 'Failed to create user'
-    } else {
-      createError.value = 'Unexpected error'
-    }
+    createError.value = err instanceof ApiError ? (err.body?.message ?? 'Failed to create user') : 'Unexpected error'
   } finally {
     creating.value = false
   }
@@ -104,7 +98,7 @@ async function handleUnfreeze(user: User) {
 }
 
 async function handleBlacklist(user: User) {
-  if (!confirm(`Blacklist ${user.username}? This will prevent them from logging in.`)) return
+  if (!confirm(`Blacklist ${user.username}? They will be permanently blocked from logging in.`)) return
   actionLoading.value = user.id
   try {
     const updated = await usersApi.blacklist(user.id)
@@ -143,64 +137,69 @@ function getStatusLabel(user: User): string {
   return 'Active'
 }
 
-function getStatusClass(user: User): string {
-  if (user.deleted_at) return 'bg-gray-100 text-gray-600'
+function getStatusStyle(user: User): string {
+  if (user.deleted_at) return 'bg-slate-100 text-slate-600'
   if (user.blacklisted_at) return 'bg-red-100 text-red-700'
-  if (user.frozen_until && new Date(user.frozen_until) > new Date()) return 'bg-orange-100 text-orange-700'
-  return 'bg-green-100 text-green-700'
+  if (user.frozen_until && new Date(user.frozen_until) > new Date()) return 'bg-amber-100 text-amber-700'
+  return 'bg-emerald-100 text-emerald-700'
 }
 
-function getRoleBadgeClass(role: string): string {
+function getRoleStyle(role: string): string {
   switch (role) {
-    case 'admin': return 'bg-red-100 text-red-800'
-    case 'technician': return 'bg-yellow-100 text-yellow-800'
-    default: return 'bg-blue-100 text-blue-800'
+    case 'admin': return 'bg-red-50 text-red-700 border border-red-200'
+    case 'technician': return 'bg-amber-50 text-amber-700 border border-amber-200'
+    default: return 'bg-blue-50 text-blue-700 border border-blue-200'
   }
 }
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="p-6 max-w-6xl mx-auto">
+    <!-- Header -->
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">User Management</h1>
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">User Management</h1>
+        <p class="text-sm text-slate-500 mt-0.5">{{ users.length }} total users</p>
+      </div>
       <button
         @click="showCreateForm = !showCreateForm"
-        class="min-h-[44px] px-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+        class="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-600/20"
       >
-        + Create User
+        <UserPlus class="w-4 h-4" />
+        Create User
       </button>
     </div>
 
     <!-- Create form -->
-    <div v-if="showCreateForm" class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-      <h2 class="font-semibold text-gray-900 mb-4">New User</h2>
-
-      <div v-if="createError" class="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
+    <div v-if="showCreateForm" class="bg-white rounded-2xl border border-indigo-200 p-6 mb-6 shadow-sm">
+      <h2 class="font-semibold text-slate-900 mb-5">New User</h2>
+      <div v-if="createError" class="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
         {{ createError }}
       </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Username</label>
           <input
             v-model="newUsername"
             type="text"
-            class="w-full min-h-[44px] px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+            placeholder="username"
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Password</label>
           <input
             v-model="newPassword"
             type="password"
-            class="w-full min-h-[44px] px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
+            placeholder="••••••••"
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Role</label>
           <select
             v-model="newRole"
-            class="w-full min-h-[44px] px-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 bg-white"
           >
             <option value="user">User</option>
             <option value="admin">Admin</option>
@@ -208,18 +207,18 @@ function getRoleBadgeClass(role: string): string {
           </select>
         </div>
       </div>
-
       <div class="flex gap-3">
         <button
           @click="handleCreate"
-          :disabled="creating"
-          class="min-h-[44px] px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          :disabled="creating || !newUsername.trim() || !newPassword.trim()"
+          class="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
         >
-          {{ creating ? 'Creating…' : 'Create' }}
+          <Loader2 v-if="creating" class="w-4 h-4 animate-spin" />
+          {{ creating ? 'Creating…' : 'Create User' }}
         </button>
         <button
           @click="showCreateForm = false"
-          class="min-h-[44px] px-6 text-gray-600 rounded-lg hover:bg-gray-100"
+          class="px-5 py-2.5 text-sm text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
         >
           Cancel
         </button>
@@ -227,26 +226,26 @@ function getRoleBadgeClass(role: string): string {
     </div>
 
     <!-- Filters -->
-    <div class="flex gap-4 mb-4 flex-wrap">
+    <div class="flex flex-wrap gap-3 mb-5">
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-500">Role:</label>
+        <label class="text-xs font-medium text-slate-500">Role</label>
         <select
           v-model="filterRole"
-          class="min-h-[36px] px-3 border border-gray-300 rounded-lg text-sm focus:outline-none"
+          class="px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none bg-white text-slate-700"
         >
-          <option value="">All</option>
+          <option value="">All roles</option>
           <option value="user">User</option>
           <option value="admin">Admin</option>
           <option value="technician">Technician</option>
         </select>
       </div>
       <div class="flex items-center gap-2">
-        <label class="text-sm text-gray-500">Status:</label>
+        <label class="text-xs font-medium text-slate-500">Status</label>
         <select
           v-model="filterStatus"
-          class="min-h-[36px] px-3 border border-gray-300 rounded-lg text-sm focus:outline-none"
+          class="px-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none bg-white text-slate-700"
         >
-          <option value="">All</option>
+          <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="frozen">Frozen</option>
           <option value="blacklisted">Blacklisted</option>
@@ -255,43 +254,52 @@ function getRoleBadgeClass(role: string): string {
     </div>
 
     <!-- Loading -->
-    <div v-if="loading" class="space-y-3">
-      <div v-for="n in 5" :key="n" class="h-16 bg-gray-200 rounded-xl animate-pulse" />
+    <div v-if="loading" class="space-y-2">
+      <div v-for="n in 5" :key="n" class="h-14 bg-white border border-slate-200 rounded-xl animate-pulse" />
     </div>
 
-    <!-- User table -->
-    <div v-else class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <!-- Table -->
+    <div v-else class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
       <table class="w-full">
-        <thead class="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Username</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Role</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
-            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
+        <thead>
+          <tr class="border-b border-slate-200 bg-slate-50">
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">User</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Role</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+            <th class="px-5 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
-          <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-gray-50">
-            <td class="px-4 py-3">
-              <span class="font-medium text-gray-900">{{ user.username }}</span>
-              <span class="text-xs text-gray-400 ml-2">#{{ user.id }}</span>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-slate-50/50 transition-colors">
+            <td class="px-5 py-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">
+                  {{ user.username?.[0]?.toUpperCase() ?? 'U' }}
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-900">{{ user.username }}</p>
+                  <p class="text-xs text-slate-400">#{{ user.id }}</p>
+                </div>
+              </div>
             </td>
-            <td class="px-4 py-3">
-              <span :class="['text-xs font-semibold px-2 py-1 rounded-full', getRoleBadgeClass(user.role)]">
+            <td class="px-5 py-4">
+              <span :class="['text-xs font-semibold px-2.5 py-1 rounded-full', getRoleStyle(user.role)]">
                 {{ user.role }}
               </span>
             </td>
-            <td class="px-4 py-3">
-              <span :class="['text-xs font-semibold px-2 py-1 rounded-full', getStatusClass(user)]">
-                {{ getStatusLabel(user) }}
-              </span>
-              <span v-if="user.frozen_until" class="text-xs text-gray-400 ml-2">
-                until {{ new Date(user.frozen_until).toLocaleDateString() }}
-              </span>
+            <td class="px-5 py-4">
+              <div>
+                <span :class="['text-xs font-semibold px-2.5 py-1 rounded-full', getStatusStyle(user)]">
+                  {{ getStatusLabel(user) }}
+                </span>
+                <p v-if="user.frozen_until" class="text-xs text-slate-400 mt-1">
+                  until {{ new Date(user.frozen_until).toLocaleDateString() }}
+                </p>
+              </div>
             </td>
-            <td class="px-4 py-3">
+            <td class="px-5 py-4">
               <div class="flex items-center gap-2 flex-wrap">
-                <!-- Freeze -->
+                <!-- Freeze control -->
                 <div v-if="!user.frozen_until || new Date(user.frozen_until) <= new Date()">
                   <div v-if="freezingUserId === user.id" class="flex items-center gap-2">
                     <input
@@ -299,28 +307,27 @@ function getRoleBadgeClass(role: string): string {
                       type="number"
                       min="1"
                       max="720"
-                      class="w-20 min-h-[36px] px-2 border border-gray-300 rounded text-sm"
+                      class="w-16 px-2 py-1.5 text-xs border border-slate-200 rounded-lg text-center"
                     />
-                    <span class="text-xs text-gray-500">hours</span>
+                    <span class="text-xs text-slate-400">hrs</span>
                     <button
                       @click="handleFreeze(user)"
                       :disabled="actionLoading === user.id"
-                      class="min-h-[36px] px-3 bg-orange-500 text-white text-sm font-semibold rounded hover:bg-orange-600 disabled:opacity-50"
+                      class="px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 disabled:opacity-50"
                     >
-                      Confirm
+                      <Loader2 v-if="actionLoading === user.id" class="w-3 h-3 animate-spin" />
+                      <span v-else>Confirm</span>
                     </button>
-                    <button
-                      @click="freezingUserId = null"
-                      class="min-h-[36px] px-3 text-gray-500 text-sm rounded hover:bg-gray-100"
-                    >
+                    <button @click="freezingUserId = null" class="px-3 py-1.5 text-xs text-slate-500 rounded-lg hover:bg-slate-100">
                       Cancel
                     </button>
                   </div>
                   <button
                     v-else
                     @click="freezingUserId = user.id"
-                    class="min-h-[36px] px-3 text-orange-600 border border-orange-200 text-sm font-semibold rounded hover:bg-orange-50"
+                    class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 border border-amber-200 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
                   >
+                    <Snowflake class="w-3 h-3" />
                     Freeze
                   </button>
                 </div>
@@ -330,8 +337,9 @@ function getRoleBadgeClass(role: string): string {
                   v-if="user.frozen_until && new Date(user.frozen_until) > new Date()"
                   @click="handleUnfreeze(user)"
                   :disabled="actionLoading === user.id"
-                  class="min-h-[36px] px-3 text-blue-600 border border-blue-200 text-sm font-semibold rounded hover:bg-blue-50 disabled:opacity-50"
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 border border-indigo-200 bg-indigo-50 rounded-lg hover:bg-indigo-100 disabled:opacity-50 transition-colors"
                 >
+                  <RotateCcw class="w-3 h-3" />
                   Unfreeze
                 </button>
 
@@ -340,8 +348,9 @@ function getRoleBadgeClass(role: string): string {
                   v-if="!user.blacklisted_at"
                   @click="handleBlacklist(user)"
                   :disabled="actionLoading === user.id"
-                  class="min-h-[36px] px-3 text-red-600 border border-red-200 text-sm font-semibold rounded hover:bg-red-50 disabled:opacity-50"
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-700 border border-red-200 bg-red-50 rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
                 >
+                  <ShieldAlert class="w-3 h-3" />
                   Blacklist
                 </button>
 
@@ -350,8 +359,9 @@ function getRoleBadgeClass(role: string): string {
                   v-if="!user.deleted_at"
                   @click="handleDelete(user)"
                   :disabled="actionLoading === user.id"
-                  class="min-h-[36px] px-3 text-gray-500 border border-gray-200 text-sm font-semibold rounded hover:bg-gray-50 disabled:opacity-50"
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 bg-slate-50 rounded-lg hover:bg-slate-100 disabled:opacity-50 transition-colors"
                 >
+                  <Trash2 class="w-3 h-3" />
                   Delete
                 </button>
               </div>
@@ -360,8 +370,9 @@ function getRoleBadgeClass(role: string): string {
         </tbody>
       </table>
 
-      <div v-if="filteredUsers.length === 0" class="text-center py-12 text-gray-400">
-        No users match the current filters.
+      <div v-if="filteredUsers.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
+        <Search class="w-8 h-8 text-slate-300 mb-3" />
+        <p class="text-sm text-slate-500">No users match the current filters</p>
       </div>
     </div>
   </div>

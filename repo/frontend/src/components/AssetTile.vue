@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { Asset } from '@/types/api'
-import { favoritesApi, playlistsApi } from '@/services/api'
+import { favoritesApi } from '@/services/api'
 import { usePlayerStore } from '@/stores/player'
 import { useUiStore } from '@/stores/ui'
+import { Play, Heart, Plus, Sparkles } from 'lucide-vue-next'
 
 const props = defineProps<{
   asset: Asset
@@ -22,6 +23,7 @@ const uiStore = useUiStore()
 
 const favorited = ref(props.isFavorited ?? false)
 const favoriteLoading = ref(false)
+const isHovered = ref(false)
 
 const durationFormatted = computed(() => {
   const secs = props.asset.duration_seconds ?? 0
@@ -30,9 +32,11 @@ const durationFormatted = computed(() => {
   return `${m}:${String(s).padStart(2, '0')}`
 })
 
-const thumbnailUrl = computed(() => {
-  return props.asset.thumbnail_urls?.['160'] ?? ''
-})
+const thumbnailUrl = computed(() => props.asset.thumbnail_urls?.['160'] ?? '')
+
+const isCurrentlyPlaying = computed(
+  () => playerStore.currentAsset?.id === props.asset.id && playerStore.isPlaying
+)
 
 async function handlePlay() {
   await playerStore.play(props.asset)
@@ -64,112 +68,120 @@ function handleAddToPlaylist() {
 </script>
 
 <template>
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow border border-gray-100">
-    <!-- Thumbnail -->
-    <div class="relative aspect-video bg-gray-200">
+  <div
+    class="group bg-white rounded-xl border border-slate-200 overflow-hidden hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200"
+    @mouseenter="isHovered = true"
+    @mouseleave="isHovered = false"
+  >
+    <!-- Thumbnail area -->
+    <div class="relative aspect-video bg-slate-100 overflow-hidden">
       <img
         v-if="thumbnailUrl"
         :src="thumbnailUrl"
         :alt="asset.title"
-        class="w-full h-full object-cover"
+        class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         loading="lazy"
       />
       <div
         v-else
-        class="w-full h-full flex items-center justify-center text-gray-400"
+        class="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200"
       >
-        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.361a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.361a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
         </svg>
       </div>
+
+      <!-- Gradient overlay -->
+      <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
 
       <!-- Duration badge -->
       <span
         v-if="asset.duration_seconds"
-        class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded"
+        class="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded-md font-medium backdrop-blur-sm"
       >
         {{ durationFormatted }}
       </span>
 
-      <!-- Play overlay button -->
+      <!-- Now playing indicator -->
+      <div
+        v-if="isCurrentlyPlaying"
+        class="absolute top-2 left-2 flex items-center gap-1 bg-indigo-600/90 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm"
+      >
+        <span class="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+        Playing
+      </div>
+
+      <!-- Play button overlay -->
       <button
         @click="handlePlay"
-        class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors group"
+        class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
         :aria-label="`Play ${asset.title}`"
       >
-        <span class="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg class="w-5 h-5 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
-          </svg>
-        </span>
+        <div class="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform duration-200">
+          <Play class="w-5 h-5 text-slate-900 ml-0.5 fill-slate-900" />
+        </div>
       </button>
     </div>
 
     <!-- Content -->
     <div class="p-3">
-      <h3 class="font-semibold text-gray-900 text-sm line-clamp-2 mb-2">
+      <h3 class="font-semibold text-slate-900 text-sm line-clamp-2 leading-snug mb-2">
         {{ asset.title }}
       </h3>
 
       <!-- Tags -->
       <div v-if="asset.tags?.length" class="flex flex-wrap gap-1 mb-2">
         <span
-          v-for="tag in asset.tags.slice(0, 4)"
+          v-for="tag in asset.tags.slice(0, 3)"
           :key="tag"
-          class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full"
+          class="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium"
         >
           {{ tag }}
         </span>
+        <span
+          v-if="asset.tags.length > 3"
+          class="text-xs text-slate-400 px-1 py-0.5"
+        >+{{ asset.tags.length - 3 }}</span>
       </div>
 
       <!-- Reason tags -->
       <div
         v-if="showReasonTags && asset.reason_tags?.length"
-        class="mb-2 text-xs text-purple-600 bg-purple-50 rounded px-2 py-1"
+        class="mb-2 flex items-center gap-1.5 text-xs text-violet-600 bg-violet-50 rounded-lg px-2 py-1.5"
       >
-        Based on: {{ asset.reason_tags.join(', ') }}
+        <Sparkles class="w-3 h-3 shrink-0" />
+        <span class="truncate">{{ asset.reason_tags.slice(0, 2).join(', ') }}</span>
       </div>
 
-      <!-- Actions row -->
-      <div class="flex items-center justify-between mt-2">
+      <!-- Actions -->
+      <div class="flex items-center justify-between pt-1">
         <button
           @click="handlePlay"
-          class="min-h-[44px] min-w-[44px] flex items-center gap-1.5 px-3 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+          class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors shadow-sm shadow-indigo-600/20"
         >
-          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
-          </svg>
+          <Play class="w-3 h-3 fill-white" />
           Play
         </button>
 
-        <div class="flex items-center gap-1">
-          <!-- Favorite button -->
+        <div class="flex items-center gap-0.5">
           <button
             @click="handleToggleFavorite"
             :disabled="favoriteLoading"
-            class="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+            class="p-2 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40"
             :aria-label="favorited ? 'Remove from favorites' : 'Add to favorites'"
           >
-            <svg
-              class="w-5 h-5"
-              :class="favorited ? 'text-red-500 fill-red-500' : 'text-gray-400'"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
+            <Heart
+              class="w-4 h-4 transition-colors"
+              :class="favorited ? 'fill-red-500 text-red-500' : 'text-slate-400'"
+            />
           </button>
 
-          <!-- Add to playlist button -->
           <button
             @click="handleAddToPlaylist"
-            class="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+            class="p-2 rounded-lg hover:bg-slate-100 transition-colors"
             aria-label="Add to playlist"
           >
-            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus class="w-4 h-4 text-slate-400" />
           </button>
         </div>
       </div>

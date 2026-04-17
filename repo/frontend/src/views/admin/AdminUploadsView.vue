@@ -145,8 +145,11 @@ function formatSize(bytes: number): string {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Upload Media</h1>
+  <div class="p-6 max-w-4xl mx-auto">
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-slate-900">Upload Media</h1>
+      <p class="text-sm text-slate-500 mt-0.5">Add new media assets to the platform</p>
+    </div>
 
     <!-- Drop zone -->
     <div
@@ -154,71 +157,67 @@ function formatSize(bytes: number): string {
       @dragleave.prevent="isDragOver = false"
       @drop.prevent="handleDrop"
       :class="[
-        'border-2 border-dashed rounded-2xl p-12 text-center mb-6 transition-colors',
-        isDragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+        'border-2 border-dashed rounded-2xl p-12 text-center mb-6 transition-all duration-200',
+        isDragOver ? 'border-indigo-400 bg-indigo-50' : 'border-slate-300 hover:border-slate-400 hover:bg-slate-50'
       ]"
     >
-      <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-      </svg>
-      <p class="text-gray-600 mb-2">Drag & drop files here or</p>
-      <label class="inline-block min-h-[44px] px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 cursor-pointer leading-[44px]">
+      <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+      </div>
+      <p class="text-slate-600 font-medium mb-1">Drop files here</p>
+      <p class="text-sm text-slate-400 mb-4">or browse from your computer</p>
+      <label class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 cursor-pointer transition-colors shadow-sm shadow-indigo-600/20">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
         Browse Files
-        <input
-          type="file"
-          multiple
-          accept="video/*,audio/*,image/*"
-          class="hidden"
-          @change="handleFileInput"
-        />
+        <input type="file" multiple accept="video/*,audio/*,image/*" class="hidden" @change="handleFileInput" />
       </label>
-      <p class="text-xs text-gray-400 mt-3">Supported: video, audio, image files</p>
+      <p class="text-xs text-slate-400 mt-4">Supports video, audio, and image files</p>
     </div>
 
-    <!-- Upload all button -->
-    <div v-if="entries.length > 0" class="flex justify-between items-center mb-4">
-      <p class="text-sm text-gray-500">{{ entries.length }} file(s) queued</p>
+    <!-- Upload all -->
+    <div v-if="entries.length > 0" class="flex justify-between items-center mb-5">
+      <p class="text-sm text-slate-500">{{ entries.length }} file{{ entries.length === 1 ? '' : 's' }} queued</p>
       <button
         @click="uploadAll"
         :disabled="entries.every((e) => e.status === 'done' || e.status === 'uploading')"
-        class="min-h-[44px] px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
       >
         Upload All
       </button>
     </div>
 
-    <!-- Entry list -->
-    <div class="space-y-4">
+    <!-- Entries -->
+    <div class="space-y-3">
       <div
         v-for="entry in entries"
         :key="entry.id"
         :class="[
-          'bg-white rounded-2xl border p-5',
-          entry.status === 'error' ? 'border-red-200' : entry.status === 'done' ? 'border-green-200' : 'border-gray-200'
+          'bg-white rounded-2xl border p-5 shadow-sm',
+          entry.status === 'error' ? 'border-red-200' :
+          entry.status === 'done' ? 'border-emerald-200' : 'border-slate-200'
         ]"
       >
-        <div class="flex items-start justify-between gap-4 mb-3">
+        <div class="flex items-start justify-between gap-4 mb-4">
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-700 truncate">{{ entry.file.name }}</p>
-            <p class="text-xs text-gray-400">{{ formatSize(entry.file.size) }}</p>
+            <p class="text-sm font-semibold text-slate-800 truncate">{{ entry.file.name }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">{{ formatSize(entry.file.size) }}</p>
           </div>
           <div class="flex items-center gap-2">
-            <span
-              :class="[
-                'text-xs font-semibold px-2 py-1 rounded-full',
-                entry.status === 'done' ? 'bg-green-100 text-green-700' :
-                entry.status === 'error' ? 'bg-red-100 text-red-700' :
-                entry.status === 'uploading' ? 'bg-blue-100 text-blue-700' :
-                'bg-gray-100 text-gray-600'
-              ]"
-            >
-              {{ entry.status }}
-            </span>
+            <span :class="[
+              'text-xs font-semibold px-2.5 py-1 rounded-full capitalize',
+              entry.status === 'done' ? 'bg-emerald-100 text-emerald-700' :
+              entry.status === 'error' ? 'bg-red-100 text-red-700' :
+              entry.status === 'uploading' ? 'bg-indigo-100 text-indigo-700' :
+              'bg-slate-100 text-slate-600'
+            ]">{{ entry.status }}</span>
             <button
               v-if="entry.status !== 'uploading'"
               @click="removeEntry(entry.id)"
-              class="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-400 hover:text-gray-600 rounded"
-              aria-label="Remove"
+              class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -227,63 +226,42 @@ function formatSize(bytes: number): string {
           </div>
         </div>
 
-        <!-- Error row -->
-        <div v-if="entry.errorMessage" class="mb-3 p-2 bg-red-50 text-red-700 text-sm rounded-lg">
+        <div v-if="entry.errorMessage" class="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl">
           {{ entry.errorMessage }}
         </div>
 
-        <!-- Progress bar -->
-        <div v-if="entry.status === 'uploading'" class="mb-3">
-          <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              class="h-full bg-blue-500 rounded-full transition-all"
-              :style="{ width: `${entry.progress}%` }"
-            />
+        <div v-if="entry.status === 'uploading'" class="mb-4">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-500">Uploading…</span>
+            <span class="text-xs font-semibold text-indigo-600">{{ entry.progress }}%</span>
           </div>
-          <p class="text-xs text-gray-400 mt-1">{{ entry.progress }}%</p>
+          <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full bg-indigo-500 rounded-full transition-all" :style="{ width: `${entry.progress}%` }" />
+          </div>
         </div>
 
-        <!-- Metadata form -->
         <div v-if="entry.status === 'pending' || entry.status === 'error'" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Title *</label>
-            <input
-              v-model="entry.title"
-              type="text"
-              class="w-full min-h-[40px] px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Title *</label>
+            <input v-model="entry.title" type="text" class="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Tags (comma-separated)</label>
-            <input
-              v-model="entry.tags"
-              type="text"
-              placeholder="Safety, Parking, Event"
-              class="w-full min-h-[40px] px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Tags (comma-separated)</label>
+            <input v-model="entry.tags" type="text" placeholder="Safety, Parking, Event" class="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500" />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Description</label>
-            <input
-              v-model="entry.description"
-              type="text"
-              class="w-full min-h-[40px] px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <label class="block text-xs font-semibold text-slate-500 mb-1.5">Description</label>
+            <input v-model="entry.description" type="text" class="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500" />
           </div>
         </div>
 
-        <!-- Upload single button -->
-        <div v-if="entry.status === 'pending' || entry.status === 'error'" class="mt-3">
-          <button
-            @click="uploadEntry(entry)"
-            class="min-h-[40px] px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700"
-          >
+        <div v-if="entry.status === 'pending' || entry.status === 'error'" class="mt-4">
+          <button @click="uploadEntry(entry)" class="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors">
             Upload
           </button>
         </div>
 
-        <!-- Done state -->
-        <div v-if="entry.status === 'done'" class="flex items-center gap-2 text-green-600 text-sm mt-2">
+        <div v-if="entry.status === 'done'" class="flex items-center gap-2 text-emerald-600 text-sm mt-2">
           <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
           </svg>

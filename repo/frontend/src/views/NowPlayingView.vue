@@ -2,10 +2,9 @@
 import { onMounted } from 'vue'
 import { usePlayerStore } from '@/stores/player'
 import { historyApi } from '@/services/api'
-import { useUiStore } from '@/stores/ui'
+import { Music2, Clock, Sparkles } from 'lucide-vue-next'
 
 const playerStore = usePlayerStore()
-const uiStore = useUiStore()
 
 onMounted(async () => {
   try {
@@ -17,7 +16,9 @@ onMounted(async () => {
 })
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString()
+  return new Date(dateStr).toLocaleString(undefined, {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  })
 }
 
 function formatDuration(secs?: number): string {
@@ -29,76 +30,82 @@ function formatDuration(secs?: number): string {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Now Playing</h1>
+  <div class="p-6 max-w-3xl mx-auto">
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-slate-900">Now Playing</h1>
+      <p class="text-sm text-slate-500 mt-0.5">Current playback and history</p>
+    </div>
 
-    <!-- Current item -->
-    <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
-      <div v-if="playerStore.currentAsset">
-        <div class="flex gap-4 items-center mb-4">
-          <div class="w-20 h-14 bg-gray-200 rounded-lg overflow-hidden shrink-0">
+    <!-- Player card -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+      <div v-if="playerStore.currentAsset" class="p-6">
+        <div class="flex gap-4 items-center mb-5">
+          <div class="w-20 h-14 bg-slate-100 rounded-xl overflow-hidden shrink-0 shadow-sm">
             <img
               v-if="playerStore.currentAsset.thumbnail_urls?.['160']"
               :src="playerStore.currentAsset.thumbnail_urls['160']"
               :alt="playerStore.currentAsset.title"
               class="w-full h-full object-cover"
             />
+            <div v-else class="w-full h-full flex items-center justify-center">
+              <Music2 class="w-6 h-6 text-slate-300" />
+            </div>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="font-bold text-gray-900 text-lg truncate">
+            <p class="font-bold text-slate-900 text-lg truncate leading-tight">
               {{ playerStore.currentAsset.title }}
             </p>
-            <p v-if="playerStore.currentAsset.duration_seconds" class="text-sm text-gray-500">
+            <p v-if="playerStore.currentAsset.duration_seconds" class="text-sm text-slate-500 mt-0.5">
               {{ formatDuration(playerStore.currentAsset.duration_seconds) }}
             </p>
           </div>
-          <div class="flex items-center gap-2">
-            <div
-              v-if="playerStore.isPlaying"
-              class="flex items-center gap-1 text-green-600 text-sm font-medium"
-            >
-              <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              Playing
-            </div>
+          <div
+            v-if="playerStore.isPlaying"
+            class="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 text-xs font-semibold px-3 py-1.5 rounded-full shrink-0"
+          >
+            <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            Playing
           </div>
         </div>
 
-        <!-- Progress bar placeholder -->
-        <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div class="h-full bg-blue-500 rounded-full w-1/3 transition-all" />
+        <!-- Progress bar -->
+        <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-4">
+          <div class="h-full bg-indigo-500 rounded-full transition-all duration-500" style="width: 33%" />
         </div>
 
-        <!-- Reasons -->
+        <!-- Recommendation reason -->
         <div
           v-if="playerStore.nowPlayingReasons.length"
-          class="mt-3 text-sm text-purple-600"
+          class="flex items-center gap-2 text-sm text-violet-600 bg-violet-50 border border-violet-100 rounded-xl px-3 py-2"
         >
-          Based on your favorites: {{ playerStore.nowPlayingReasons.join(', ') }}
+          <Sparkles class="w-3.5 h-3.5 shrink-0" />
+          <span>Based on your favorites: {{ playerStore.nowPlayingReasons.join(', ') }}</span>
         </div>
       </div>
 
-      <div v-else class="text-center py-8 text-gray-400">
-        <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-        </svg>
-        Nothing playing. Select an asset to start.
+      <div v-else class="flex flex-col items-center justify-center py-12 text-center px-6">
+        <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+          <Music2 class="w-6 h-6 text-slate-400" />
+        </div>
+        <h3 class="font-semibold text-slate-700 mb-1">Nothing playing</h3>
+        <p class="text-sm text-slate-400">Select an asset from the library to start</p>
       </div>
     </div>
 
-    <!-- Up-next queue -->
+    <!-- Up Next -->
     <div class="mb-6">
-      <h2 class="text-lg font-semibold text-gray-900 mb-3">Up Next</h2>
-      <div v-if="playerStore.queue.length === 0" class="text-sm text-gray-400 py-4">
-        Queue is empty.
+      <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">Up Next</h2>
+      <div v-if="playerStore.queue.length === 0" class="bg-white rounded-xl border border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+        Queue is empty
       </div>
-      <div v-else class="space-y-2">
+      <div v-else class="space-y-1.5">
         <div
           v-for="(asset, idx) in playerStore.queue"
           :key="`${asset.id}-${idx}`"
-          class="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3"
+          class="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3 hover:border-slate-300 transition-colors"
         >
-          <span class="text-xs text-gray-400 w-5">{{ idx + 1 }}</span>
-          <div class="w-10 h-7 bg-gray-200 rounded overflow-hidden shrink-0">
+          <span class="text-xs text-slate-400 w-5 text-center font-medium">{{ idx + 1 }}</span>
+          <div class="w-10 h-7 bg-slate-100 rounded-lg overflow-hidden shrink-0">
             <img
               v-if="asset.thumbnail_urls?.['160']"
               :src="asset.thumbnail_urls['160']"
@@ -106,24 +113,24 @@ function formatDuration(secs?: number): string {
               class="w-full h-full object-cover"
             />
           </div>
-          <p class="flex-1 text-sm font-medium text-gray-900 truncate">{{ asset.title }}</p>
+          <p class="flex-1 text-sm font-medium text-slate-900 truncate">{{ asset.title }}</p>
         </div>
       </div>
     </div>
 
-    <!-- Recent plays -->
+    <!-- Recently Played -->
     <div>
-      <h2 class="text-lg font-semibold text-gray-900 mb-3">Recently Played</h2>
-      <div v-if="playerStore.recentPlays.length === 0" class="text-sm text-gray-400 py-4">
-        No recent plays.
+      <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">Recently Played</h2>
+      <div v-if="playerStore.recentPlays.length === 0" class="bg-white rounded-xl border border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+        No recent plays
       </div>
-      <div v-else class="space-y-2">
+      <div v-else class="space-y-1.5">
         <div
           v-for="entry in playerStore.recentPlays.slice(0, 10)"
           :key="entry.id"
-          class="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3"
+          class="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3 hover:border-slate-300 transition-colors"
         >
-          <div class="w-10 h-7 bg-gray-200 rounded overflow-hidden shrink-0">
+          <div class="w-10 h-7 bg-slate-100 rounded-lg overflow-hidden shrink-0">
             <img
               v-if="entry.asset?.thumbnail_urls?.['160']"
               :src="entry.asset.thumbnail_urls['160']"
@@ -132,10 +139,13 @@ function formatDuration(secs?: number): string {
             />
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">
+            <p class="text-sm font-medium text-slate-900 truncate">
               {{ entry.asset?.title ?? `Asset #${entry.asset_id}` }}
             </p>
-            <p class="text-xs text-gray-400">{{ formatDate(entry.played_at) }}</p>
+            <div class="flex items-center gap-1 mt-0.5">
+              <Clock class="w-3 h-3 text-slate-400" />
+              <p class="text-xs text-slate-400">{{ formatDate(entry.played_at) }}</p>
+            </div>
           </div>
         </div>
       </div>

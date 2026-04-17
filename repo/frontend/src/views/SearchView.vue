@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import type { Asset } from '@/types/api'
 import { searchApi } from '@/services/api'
 import { useUiStore } from '@/stores/ui'
 import AssetTile from '@/components/AssetTile.vue'
 import AddToPlaylistDialog from '@/components/AddToPlaylistDialog.vue'
+import { Search, AlertTriangle, Loader2, SlidersHorizontal } from 'lucide-vue-next'
 
 const uiStore = useUiStore()
 
@@ -28,15 +29,21 @@ let abortController: AbortController | null = null
 const availableTags = ['Safety', 'Overnight', 'Gate Issues', 'Parking', 'Event', 'General', 'Emergency']
 
 const durationOptions = [
+  { label: 'Any', value: null },
   { label: '< 2 min', value: 120 },
   { label: '< 5 min', value: 300 },
-  { label: 'Any', value: null },
 ]
 
 const recencyOptions = [
+  { label: 'All time', value: null },
   { label: '30 days', value: 30 },
   { label: '90 days', value: 90 },
-  { label: 'All time', value: null },
+]
+
+const sortOptions = [
+  { label: 'Recommended', value: 'recommended' as const },
+  { label: 'Most Played', value: 'played_count' as const },
+  { label: 'Newest', value: 'created_at' as const },
 ]
 
 async function fetchAssets(reset = false) {
@@ -64,7 +71,6 @@ async function fetchAssets(reset = false) {
       },
       abortController.signal,
     )
-
     if (reset) {
       assets.value = result.data.items
     } else {
@@ -91,150 +97,149 @@ watch([query, selectedTags, maxDuration, recencyDays, sort], () => {
   triggerSearch()
 })
 
-onMounted(() => {
-  fetchAssets(true)
-})
+onMounted(() => fetchAssets(true))
 
 function toggleTag(tag: string) {
   const idx = selectedTags.value.indexOf(tag)
-  if (idx >= 0) {
-    selectedTags.value.splice(idx, 1)
-  } else {
-    selectedTags.value.push(tag)
-  }
-}
-
-function loadMore() {
-  if (nextCursor.value && !loadingMore.value) {
-    fetchAssets(false)
-  }
+  if (idx >= 0) selectedTags.value.splice(idx, 1)
+  else selectedTags.value.push(tag)
 }
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <!-- Header -->
+  <div class="p-6 max-w-7xl mx-auto">
+    <!-- Page header -->
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Search</h1>
-      <div v-if="degraded" class="flex items-center gap-2 text-xs font-semibold text-yellow-700 bg-yellow-100 px-3 py-1.5 rounded-full">
-        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-        </svg>
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">Search</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Find and discover media assets</p>
+      </div>
+      <div
+        v-if="degraded"
+        class="flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl"
+      >
+        <AlertTriangle class="w-3.5 h-3.5" />
         Recommendations degraded
       </div>
     </div>
 
-    <!-- Search input -->
-    <div class="relative mb-4">
-      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
+    <!-- Search bar -->
+    <div class="relative mb-5">
+      <Search class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
       <input
         v-model="query"
         type="search"
-        placeholder="Search media..."
-        class="w-full min-h-[48px] pl-10 pr-4 text-base border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+        placeholder="Search by title, tag, or keyword…"
+        class="w-full pl-11 pr-4 py-3 text-sm bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 shadow-sm transition-shadow"
       />
     </div>
 
-    <!-- Filters row -->
-    <div class="flex flex-wrap gap-3 mb-6">
-      <!-- Tag filter chips -->
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="tag in availableTags"
-          :key="tag"
-          @click="toggleTag(tag)"
-          :class="[
-            'min-h-[36px] px-3 text-sm rounded-full border transition-colors',
-            selectedTags.includes(tag)
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
-          ]"
-        >
-          {{ tag }}
-        </button>
+    <!-- Filters -->
+    <div class="bg-white border border-slate-200 rounded-xl p-4 mb-6 shadow-sm">
+      <div class="flex items-center gap-2 mb-3">
+        <SlidersHorizontal class="w-3.5 h-3.5 text-slate-400" />
+        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Filters</span>
       </div>
 
-      <!-- Duration filter -->
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 font-medium">Duration:</span>
-        <div class="flex gap-1">
-          <button
-            v-for="opt in durationOptions"
-            :key="String(opt.value)"
-            @click="maxDuration = opt.value"
-            :class="[
-              'min-h-[36px] px-3 text-sm rounded-full border transition-colors',
-              maxDuration === opt.value
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
-            ]"
-          >
-            {{ opt.label }}
-          </button>
+      <div class="space-y-3">
+        <!-- Tags -->
+        <div class="flex items-start gap-3">
+          <span class="text-xs font-medium text-slate-500 w-16 pt-1.5 shrink-0">Tags</span>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="tag in availableTags"
+              :key="tag"
+              @click="toggleTag(tag)"
+              :class="[
+                'px-3 py-1 text-xs rounded-full border font-medium transition-all duration-150',
+                selectedTags.includes(tag)
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-600/20'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
+              ]"
+            >
+              {{ tag }}
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- Recency filter -->
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 font-medium">Added:</span>
-        <div class="flex gap-1">
-          <button
-            v-for="opt in recencyOptions"
-            :key="String(opt.value)"
-            @click="recencyDays = opt.value"
-            :class="[
-              'min-h-[36px] px-3 text-sm rounded-full border transition-colors',
-              recencyDays === opt.value
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
-            ]"
-          >
-            {{ opt.label }}
-          </button>
-        </div>
-      </div>
+        <!-- Duration + Recency + Sort -->
+        <div class="flex flex-wrap gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-slate-500 whitespace-nowrap">Duration</span>
+            <div class="flex gap-1">
+              <button
+                v-for="opt in durationOptions"
+                :key="String(opt.value)"
+                @click="maxDuration = opt.value"
+                :class="[
+                  'px-2.5 py-1 text-xs rounded-lg border font-medium transition-all duration-150',
+                  maxDuration === opt.value
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                ]"
+              >{{ opt.label }}</button>
+            </div>
+          </div>
 
-      <!-- Sort toggle -->
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 font-medium">Sort:</span>
-        <div class="flex gap-1">
-          <button
-            @click="sort = 'played_count'"
-            :class="['min-h-[36px] px-3 text-sm rounded-full border transition-colors', sort === 'played_count' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400']"
-          >Most Played</button>
-          <button
-            @click="sort = 'created_at'"
-            :class="['min-h-[36px] px-3 text-sm rounded-full border transition-colors', sort === 'created_at' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400']"
-          >Newest</button>
-          <button
-            @click="sort = 'recommended'"
-            :class="['min-h-[36px] px-3 text-sm rounded-full border transition-colors', sort === 'recommended' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400']"
-          >Recommended</button>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-slate-500 whitespace-nowrap">Added</span>
+            <div class="flex gap-1">
+              <button
+                v-for="opt in recencyOptions"
+                :key="String(opt.value)"
+                @click="recencyDays = opt.value"
+                :class="[
+                  'px-2.5 py-1 text-xs rounded-lg border font-medium transition-all duration-150',
+                  recencyDays === opt.value
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                ]"
+              >{{ opt.label }}</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-medium text-slate-500 whitespace-nowrap">Sort</span>
+            <div class="flex gap-1">
+              <button
+                v-for="opt in sortOptions"
+                :key="opt.value"
+                @click="sort = opt.value"
+                :class="[
+                  'px-2.5 py-1 text-xs rounded-lg border font-medium transition-all duration-150',
+                  sort === opt.value
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                ]"
+              >{{ opt.label }}</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Loading skeleton -->
-    <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-      <div
-        v-for="n in 12"
-        :key="n"
-        class="bg-gray-200 rounded-xl animate-pulse aspect-video"
-      />
+    <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div v-for="n in 10" :key="n" class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div class="aspect-video bg-slate-200 animate-pulse" />
+        <div class="p-3 space-y-2">
+          <div class="h-3 bg-slate-200 rounded-full animate-pulse w-3/4" />
+          <div class="h-3 bg-slate-200 rounded-full animate-pulse w-1/2" />
+        </div>
+      </div>
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="assets.length === 0" class="text-center py-16 text-gray-400">
-      <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <p>No media found</p>
+    <div v-else-if="assets.length === 0" class="flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+        <Search class="w-7 h-7 text-slate-400" />
+      </div>
+      <h3 class="text-base font-semibold text-slate-700 mb-1">No results found</h3>
+      <p class="text-sm text-slate-400">Try adjusting your search or filters</p>
     </div>
 
     <!-- Asset grid -->
-    <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+    <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
       <AssetTile
         v-for="asset in assets"
         :key="asset.id"
@@ -245,17 +250,17 @@ function loadMore() {
     </div>
 
     <!-- Load more -->
-    <div v-if="nextCursor" class="flex justify-center mt-8">
+    <div v-if="nextCursor && !loading" class="flex justify-center mt-8">
       <button
-        @click="loadMore"
+        @click="fetchAssets(false)"
         :disabled="loadingMore"
-        class="min-h-[44px] px-8 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        class="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50 transition-all shadow-sm"
       >
-        {{ loadingMore ? 'Loading…' : 'Load More' }}
+        <Loader2 v-if="loadingMore" class="w-4 h-4 animate-spin" />
+        {{ loadingMore ? 'Loading…' : 'Load more results' }}
       </button>
     </div>
 
-    <!-- Add to playlist dialog -->
     <AddToPlaylistDialog
       v-if="addToPlaylistAsset"
       :asset="addToPlaylistAsset"

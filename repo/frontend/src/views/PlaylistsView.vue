@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/ui'
 import ShareDialog from '@/components/ShareDialog.vue'
 import RedeemDialog from '@/components/RedeemDialog.vue'
 import { useRouter } from 'vue-router'
+import { ListMusic, Plus, Share2, Trash2, ChevronRight, Ticket, Loader2 } from 'lucide-vue-next'
 
 const uiStore = useUiStore()
 const router = useRouter()
@@ -87,94 +88,123 @@ function handleShareRevoked() {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="p-6 max-w-4xl mx-auto">
+    <!-- Header -->
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Playlists</h1>
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">Playlists</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Organize your media into collections</p>
+      </div>
       <div class="flex gap-2">
         <button
           @click="showRedeem = true"
-          class="min-h-[44px] px-4 text-sm font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-colors"
         >
-          Redeem Code
+          <Ticket class="w-4 h-4" />
+          Redeem
         </button>
         <button
           @click="showCreateInput = !showCreateInput"
-          class="min-h-[44px] px-4 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-600/20"
         >
-          + New Playlist
+          <Plus class="w-4 h-4" />
+          New Playlist
         </button>
       </div>
     </div>
 
     <!-- Create input -->
-    <div v-if="showCreateInput" class="mb-6 flex gap-3">
-      <input
-        v-model="newPlaylistName"
-        type="text"
-        placeholder="Playlist name…"
-        class="flex-1 min-h-[44px] px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        @keydown.enter="handleCreate"
-        @keydown.escape="showCreateInput = false"
-        autofocus
-      />
-      <button
-        @click="handleCreate"
-        :disabled="creating || !newPlaylistName.trim()"
-        class="min-h-[44px] px-5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
-      >
-        {{ creating ? 'Creating…' : 'Create' }}
-      </button>
+    <div v-if="showCreateInput" class="bg-white border border-indigo-200 rounded-xl p-4 mb-5 shadow-sm">
+      <p class="text-sm font-semibold text-slate-700 mb-3">New Playlist</p>
+      <div class="flex gap-3">
+        <input
+          v-model="newPlaylistName"
+          type="text"
+          placeholder="Enter playlist name…"
+          class="flex-1 px-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 bg-white"
+          @keydown.enter="handleCreate"
+          @keydown.escape="showCreateInput = false"
+          autofocus
+        />
+        <button
+          @click="handleCreate"
+          :disabled="creating || !newPlaylistName.trim()"
+          class="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+        >
+          <Loader2 v-if="creating" class="w-4 h-4 animate-spin" />
+          {{ creating ? 'Creating…' : 'Create' }}
+        </button>
+        <button
+          @click="showCreateInput = false"
+          class="px-4 py-2.5 text-sm text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
 
-    <div v-if="loading" class="space-y-3">
-      <div v-for="n in 4" :key="n" class="h-20 bg-gray-200 rounded-xl animate-pulse" />
+    <!-- Loading -->
+    <div v-if="loading" class="space-y-2">
+      <div v-for="n in 4" :key="n" class="h-16 bg-white border border-slate-200 rounded-xl animate-pulse" />
     </div>
 
-    <div v-else-if="playlists.length === 0" class="text-center py-16 text-gray-400">
-      No playlists yet. Create one to get started.
+    <!-- Empty state -->
+    <div v-else-if="playlists.length === 0" class="flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+        <ListMusic class="w-7 h-7 text-slate-400" />
+      </div>
+      <h3 class="text-base font-semibold text-slate-700 mb-1">No playlists yet</h3>
+      <p class="text-sm text-slate-400">Create a playlist to organize your media</p>
     </div>
 
-    <div v-else class="space-y-3">
+    <!-- Playlist list -->
+    <div v-else class="space-y-2">
       <div
         v-for="pl in playlists"
         :key="pl.id"
-        class="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:border-blue-200 transition-colors"
+        class="bg-white rounded-xl border border-slate-200 hover:border-indigo-200 hover:shadow-sm transition-all duration-150 group"
       >
-        <button
-          @click="router.push(`/playlists/${pl.id}`)"
-          class="flex-1 min-h-[44px] text-left"
-        >
-          <p class="font-semibold text-gray-900">{{ pl.name }}</p>
-          <p class="text-xs text-gray-400 mt-0.5">
-            {{ pl.items?.length ?? 0 }} item{{ (pl.items?.length ?? 0) !== 1 ? 's' : '' }}
-          </p>
-        </button>
+        <div class="flex items-center px-4 py-3.5">
+          <!-- Playlist icon -->
+          <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center mr-3 shrink-0 group-hover:bg-indigo-100 transition-colors">
+            <ListMusic class="w-5 h-5 text-indigo-500" />
+          </div>
 
-        <div class="flex items-center gap-2 ml-4">
+          <!-- Playlist info (clickable) -->
           <button
-            @click="handleShare(pl)"
-            class="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            aria-label="Share playlist"
+            @click="router.push(`/playlists/${pl.id}`)"
+            class="flex-1 min-w-0 text-left"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
+            <p class="font-semibold text-slate-900 truncate">{{ pl.name }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+              {{ pl.items?.length ?? 0 }} {{ (pl.items?.length ?? 0) === 1 ? 'item' : 'items' }}
+            </p>
           </button>
-          <button
-            @click="handleDelete(pl)"
-            :disabled="deletingId === pl.id"
-            class="min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-            aria-label="Delete playlist"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-1 ml-3">
+            <button
+              @click="handleShare(pl)"
+              class="p-2 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+              aria-label="Share playlist"
+            >
+              <Share2 class="w-4 h-4" />
+            </button>
+            <button
+              @click="handleDelete(pl)"
+              :disabled="deletingId === pl.id"
+              class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+              aria-label="Delete playlist"
+            >
+              <Trash2 class="w-4 h-4" />
+            </button>
+            <ChevronRight class="w-4 h-4 text-slate-300 ml-1" />
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Share dialog -->
+    <!-- Dialogs -->
     <ShareDialog
       v-if="sharingPlaylist && activeShare"
       :share="activeShare"
@@ -182,8 +212,6 @@ function handleShareRevoked() {
       @close="sharingPlaylist = null; activeShare = null"
       @revoked="handleShareRevoked"
     />
-
-    <!-- Redeem dialog -->
     <RedeemDialog
       v-if="showRedeem"
       @close="showRedeem = false"

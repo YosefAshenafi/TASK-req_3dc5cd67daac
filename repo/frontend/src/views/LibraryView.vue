@@ -5,6 +5,7 @@ import { assetsApi } from '@/services/api'
 import { useUiStore } from '@/stores/ui'
 import AssetTile from '@/components/AssetTile.vue'
 import AddToPlaylistDialog from '@/components/AddToPlaylistDialog.vue'
+import { Library, Loader2 } from 'lucide-vue-next'
 
 const uiStore = useUiStore()
 
@@ -31,11 +32,8 @@ async function fetchAssets(reset = false) {
       sort: sort.value,
       limit: 24,
     })
-    if (reset) {
-      assets.value = result.items
-    } else {
-      assets.value.push(...result.items)
-    }
+    if (reset) assets.value = result.items
+    else assets.value.push(...result.items)
     nextCursor.value = result.next_cursor
   } catch {
     uiStore.addNotification({ type: 'error', message: 'Failed to load library' })
@@ -50,31 +48,57 @@ watch(sort, () => fetchAssets(true))
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="p-6 max-w-7xl mx-auto">
+    <!-- Header -->
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Library</h1>
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 font-medium">Sort:</span>
-        <button
-          @click="sort = 'played_count'"
-          :class="['min-h-[36px] px-3 text-sm rounded-full border transition-colors', sort === 'played_count' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400']"
-        >Most Played</button>
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">Library</h1>
+        <p class="text-sm text-slate-500 mt-0.5">All available media assets</p>
+      </div>
+      <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
         <button
           @click="sort = 'created_at'"
-          :class="['min-h-[36px] px-3 text-sm rounded-full border transition-colors', sort === 'created_at' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400']"
+          :class="[
+            'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150',
+            sort === 'created_at'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          ]"
         >Newest</button>
+        <button
+          @click="sort = 'played_count'"
+          :class="[
+            'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150',
+            sort === 'played_count'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          ]"
+        >Most Played</button>
       </div>
     </div>
 
-    <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-      <div v-for="n in 12" :key="n" class="bg-gray-200 rounded-xl animate-pulse aspect-video" />
+    <!-- Loading skeleton -->
+    <div v-if="loading" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div v-for="n in 10" :key="n" class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div class="aspect-video bg-slate-200 animate-pulse" />
+        <div class="p-3 space-y-2">
+          <div class="h-3 bg-slate-200 rounded-full animate-pulse w-3/4" />
+          <div class="h-3 bg-slate-200 rounded-full animate-pulse w-1/2" />
+        </div>
+      </div>
     </div>
 
-    <div v-else-if="assets.length === 0" class="text-center py-16 text-gray-400">
-      No media in library yet.
+    <!-- Empty state -->
+    <div v-else-if="assets.length === 0" class="flex flex-col items-center justify-center py-24 text-center">
+      <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+        <Library class="w-7 h-7 text-slate-400" />
+      </div>
+      <h3 class="text-base font-semibold text-slate-700 mb-1">Library is empty</h3>
+      <p class="text-sm text-slate-400">Upload media assets to get started</p>
     </div>
 
-    <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+    <!-- Asset grid -->
+    <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
       <AssetTile
         v-for="asset in assets"
         :key="asset.id"
@@ -83,13 +107,15 @@ watch(sort, () => fetchAssets(true))
       />
     </div>
 
-    <div v-if="nextCursor" class="flex justify-center mt-8">
+    <!-- Load more -->
+    <div v-if="nextCursor && !loading" class="flex justify-center mt-8">
       <button
         @click="fetchAssets(false)"
         :disabled="loadingMore"
-        class="min-h-[44px] px-8 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        class="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50 transition-all shadow-sm"
       >
-        {{ loadingMore ? 'Loading…' : 'Load More' }}
+        <Loader2 v-if="loadingMore" class="w-4 h-4 animate-spin" />
+        {{ loadingMore ? 'Loading…' : 'Load more' }}
       </button>
     </div>
 

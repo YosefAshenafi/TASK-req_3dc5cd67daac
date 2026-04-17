@@ -114,10 +114,10 @@ function handleShareRevoked() {
 </script>
 
 <template>
-  <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="p-6 max-w-3xl mx-auto">
     <div v-if="loading" class="animate-pulse space-y-4">
-      <div class="h-8 bg-gray-200 rounded w-1/3" />
-      <div class="h-4 bg-gray-200 rounded w-1/2" />
+      <div class="h-8 bg-slate-200 rounded-xl w-1/3" />
+      <div class="h-4 bg-slate-200 rounded-xl w-1/2" />
     </div>
 
     <div v-else-if="playlist">
@@ -127,30 +127,21 @@ function handleShareRevoked() {
           <div v-if="isEditingName" class="flex gap-2 items-center">
             <input
               v-model="editName"
-              class="flex-1 min-h-[44px] text-xl font-bold border-b-2 border-blue-500 focus:outline-none bg-transparent"
+              class="flex-1 text-xl font-bold border-b-2 border-indigo-500 focus:outline-none bg-transparent text-slate-900"
               @keydown.enter="handleSaveName"
               @keydown.escape="isEditingName = false"
               autofocus
             />
-            <button
-              @click="handleSaveName"
-              :disabled="saving"
-              class="min-h-[44px] px-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
+            <button @click="handleSaveName" :disabled="saving" class="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50">
               {{ saving ? 'Saving…' : 'Save' }}
             </button>
-            <button
-              @click="isEditingName = false"
-              class="min-h-[44px] px-4 text-gray-500 rounded-lg hover:bg-gray-100"
-            >
-              Cancel
-            </button>
+            <button @click="isEditingName = false" class="px-4 py-2 text-slate-500 rounded-xl hover:bg-slate-100 text-sm">Cancel</button>
           </div>
           <div v-else class="flex items-center gap-2">
-            <h1 class="text-2xl font-bold text-gray-900">{{ playlist.name }}</h1>
+            <h1 class="text-2xl font-bold text-slate-900">{{ playlist.name }}</h1>
             <button
               @click="isEditingName = true"
-              class="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
               aria-label="Edit name"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,42 +149,42 @@ function handleShareRevoked() {
               </svg>
             </button>
           </div>
-          <p class="text-sm text-gray-400 mt-1">{{ playlist.items?.length ?? 0 }} items</p>
+          <p class="text-sm text-slate-400 mt-0.5">{{ playlist.items?.length ?? 0 }} {{ (playlist.items?.length ?? 0) === 1 ? 'item' : 'items' }}</p>
         </div>
 
         <div class="flex items-center gap-2">
-          <button
-            @click="handleShare"
-            class="min-h-[44px] px-4 text-sm font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
-          >
+          <button @click="handleShare" class="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-indigo-600 border border-indigo-200 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
             Share
           </button>
-          <button
-            @click="handleDelete"
-            :disabled="deleting"
-            class="min-h-[44px] px-4 text-sm font-semibold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
-          >
+          <button @click="handleDelete" :disabled="deleting" class="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-red-600 border border-red-200 bg-red-50 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
             {{ deleting ? 'Deleting…' : 'Delete' }}
           </button>
         </div>
       </div>
 
-      <!-- Items list -->
-      <div v-if="!playlist.items?.length" class="text-center py-12 text-gray-400">
-        No items in this playlist yet.
+      <!-- Items -->
+      <div v-if="!playlist.items?.length" class="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl border border-slate-200">
+        <svg class="w-10 h-10 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+        <p class="text-sm text-slate-500">No items in this playlist yet</p>
+        <p class="text-xs text-slate-400 mt-1">Add items from Search or Library</p>
       </div>
 
       <div v-else class="space-y-2">
         <div
           v-for="(item, index) in playlist.items"
           :key="item.id"
-          class="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4"
+          class="bg-white rounded-xl border border-slate-200 p-3.5 flex items-center gap-3 hover:border-slate-300 transition-colors"
         >
-          <!-- Position number -->
-          <span class="text-sm font-mono text-gray-400 w-6 text-right shrink-0">{{ index + 1 }}</span>
-
-          <!-- Thumbnail -->
-          <div class="w-12 h-8 bg-gray-200 rounded overflow-hidden shrink-0">
+          <span class="text-xs font-mono text-slate-400 w-5 text-center shrink-0">{{ index + 1 }}</span>
+          <div class="w-12 h-8 bg-slate-100 rounded-lg overflow-hidden shrink-0">
             <img
               v-if="item.asset?.thumbnail_urls?.['160']"
               :src="item.asset.thumbnail_urls['160']"
@@ -201,52 +192,26 @@ function handleShareRevoked() {
               class="w-full h-full object-cover"
             />
           </div>
-
-          <!-- Info -->
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">
+            <p class="text-sm font-medium text-slate-900 truncate">
               {{ item.asset?.title ?? `Asset #${item.asset_id}` }}
             </p>
           </div>
-
-          <!-- Controls -->
-          <div class="flex items-center gap-1 shrink-0">
-            <button
-              @click="moveItem(index, 'up')"
-              :disabled="index === 0"
-              class="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-30 rounded"
-              aria-label="Move up"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-              </svg>
+          <div class="flex items-center gap-0.5 shrink-0">
+            <button @click="moveItem(index, 'up')" :disabled="index === 0" class="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30 rounded-lg hover:bg-slate-100 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
             </button>
-            <button
-              @click="moveItem(index, 'down')"
-              :disabled="index === (playlist.items?.length ?? 0) - 1"
-              class="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-400 hover:text-gray-600 disabled:opacity-30 rounded"
-              aria-label="Move down"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
+            <button @click="moveItem(index, 'down')" :disabled="index === (playlist.items?.length ?? 0) - 1" class="p-1.5 text-slate-400 hover:text-slate-600 disabled:opacity-30 rounded-lg hover:bg-slate-100 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
             </button>
-            <button
-              @click="handleRemoveItem(item)"
-              :disabled="removingItemId === item.id"
-              class="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-400 hover:text-red-600 disabled:opacity-50 rounded"
-              aria-label="Remove item"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button @click="handleRemoveItem(item)" :disabled="removingItemId === item.id" class="p-1.5 text-slate-400 hover:text-red-500 disabled:opacity-50 rounded-lg hover:bg-red-50 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Share dialog -->
     <ShareDialog
       v-if="activeShare && playlist"
       :share="activeShare"

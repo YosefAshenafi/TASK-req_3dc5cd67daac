@@ -69,7 +69,7 @@ docker compose --profile dev --profile devices up
 ./run_tests.sh
 ```
 
-`run_tests.sh` starts core services automatically, runs every test suite, and prints a summary:
+`run_tests.sh` starts core services automatically, runs **every suite inside Docker** (`test-runner`, `vitest-runner`, `frontend-build`, `e2e-runner`), and prints a summary:
 
 ```
   Suite                           Status  Tests       Coverage
@@ -91,7 +91,17 @@ docker compose --profile dev --profile devices up
 ./run_tests.sh --no-e2e          # skip Playwright E2E
 ```
 
+### After pulling Docker/PHP changes
+
+If backend tests report **“No code coverage driver available”**, rebuild the PHP image so the **PCOV** extension is present:
+
+```bash
+docker compose build backend queue-worker scheduler test-runner
+```
+
 ### Manual per-suite commands
+
+All of these use Docker Compose (no local PHP/Node/Playwright install required).
 
 ```bash
 # Backend unit + feature (PHP/Pest) with coverage
@@ -102,11 +112,20 @@ docker compose --profile test run --rm test-runner \
 docker compose --profile test run --rm test-runner \
     php artisan test --filter=EncryptedFieldCastTest
 
-# Frontend unit (Vitest)
-docker compose --profile dev run --rm frontend-dev npx vitest run
+# Frontend unit (Vitest + coverage) — test profile
+docker compose --profile test run --rm vitest-runner
 
-# E2E (Playwright — requires nginx + backend running)
+# Production build for nginx (E2E serves ./frontend/dist via port 8090)
+docker compose --profile test run --rm frontend-build
+
+# E2E (Playwright — requires `docker compose up` so nginx + API are running, and dist/ built as above)
 docker compose --profile test run --rm e2e-runner
+```
+
+Interactive Vitest watch (optional, dev profile):
+
+```bash
+docker compose --profile dev run --rm frontend-dev npx vitest
 ```
 
 ---

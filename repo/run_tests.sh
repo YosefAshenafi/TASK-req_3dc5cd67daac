@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # run_tests.sh — SmartPark full test suite runner
 #
+# All suites run inside Docker Compose (test profile). No host Node/PHP/Playwright required.
+#
 # Usage:
 #   ./run_tests.sh                 # all suites
 #   ./run_tests.sh --backend-only  # PHP/Pest tests only
@@ -29,6 +31,30 @@ HR="═════════════════════════�
 
 section() { printf "\n%s\n  %s\n%s\n" "$HR" "$1" "$HR"; }
 
+# Portable number extraction (BSD grep on macOS has no grep -P)
+extract_tests_passed() {
+    # Pest: "Tests:    12 passed" / Vitest summary: "      Tests  5 passed (5)"
+    local n
+    n=$(printf '%s' "$1" | grep -oE 'Tests:[[:space:]]+[0-9]+ passed' | tail -1 | grep -oE '[0-9]+' | head -1)
+    [ -n "$n" ] && { echo "$n"; return; }
+    printf '%s' "$1" | grep -E '[[:space:]]Tests[[:space:]]+[0-9]+ passed' | tail -1 | grep -oE '[0-9]+' | head -1 || true
+}
+
+extract_backend_coverage_pct() {
+    # Pest PCOV: "Lines:   80.00% (160 / 200)"
+    printf '%s' "$1" | grep -oE 'Lines:[[:space:]]+[0-9]+\.[0-9]+%' | head -1 | grep -oE '[0-9]+\.[0-9]+' | head -1 || true
+}
+
+extract_frontend_coverage_pct() {
+    # Vitest v8 text table: "All files      |   85.00   | ..."
+    printf '%s' "$1" | grep 'All files' | head -1 | grep -oE '[0-9]+\.[0-9]+' | head -1 || true
+}
+
+extract_e2e_passed() {
+    # Playwright: "53 passed" / "15 passed (15)"
+    printf '%s' "$1" | grep -oE '[0-9]+ passed' | tail -1 | grep -oE '[0-9]+' | head -1 || true
+}
+
 # ── Result accumulators ──────────────────────────────────────────────────────
 BACKEND_TESTS=0;  BACKEND_COV="N/A";  BACKEND_STATUS="SKIP"
 FRONTEND_TESTS=0; FRONTEND_COV="N/A"; FRONTEND_STATUS="SKIP"
@@ -36,7 +62,7 @@ E2E_TESTS=0;                          E2E_STATUS="SKIP"
 
 # ── 1. Start core services ────────────────────────────────────────────────────
 section "Starting core services"
-docker compose up -d
+docker compose up -d --remove-orphans
 
 echo "  Waiting for MySQL..."
 until docker compose exec -T mysql \
@@ -69,47 +95,68 @@ echo "  Backend ready."
 
 # ── 2. Backend Tests — Pest / PHPUnit with PCOV coverage ─────────────────────
 if [ "$RUN_BACKEND" = true ]; then
-    section "Backend Tests  (Pest / PHPUnit + PCOV)"
-    BACKEND_OUT=$(docker compose --profile test run --rm test-runner \
-        php artisan test --coverage-text --min=0 2>&1) \
-        && BACKEND_STATUS="PASS" || BACKEND_STATUS="FAIL"
-    echo "$BACKEND_OUT"
+    section "Backend Tests  (Pest / PHPUnit + PCOV)  [Docker: test-runner]"
+    OUTFILE=$(mktemp)
+    set +e
+    docker compose --profile test run --rm -T test-runner \
+        php artisan test --coverage-text --min=0 2>&1 | tee "$OUTFILE"
+    ST=${PIPESTATUS[0]}
+    set -e
+    BACKEND_OUT=$(cat "$OUTFILE")
+    rm -f "$OUTFILE"
+    if [ "$ST" -eq 0 ]; then BACKEND_STATUS="PASS"; else BACKEND_STATUS="FAIL"; fi
 
-    # "Tests:  12 passed (35 assertions)"  or  "Tests:  10 passed, 2 failed"
-    RAW=$(printf '%s' "$BACKEND_OUT" | grep -oP 'Tests:\s+\K\d+' | tail -1) \
-        && BACKEND_TESTS="${RAW:-0}"
-    # "Lines:       80.00% (160 / 200)"
-    COV=$(printf '%s' "$BACKEND_OUT" | grep -oP 'Lines:\s+\K[\d.]+' | head -1) \
-        && [ -n "$COV" ] && BACKEND_COV="${COV}%"
+    RAW=$(extract_tests_passed "$BACKEND_OUT")
+    BACKEND_TESTS="${RAW:-0}"
+    COV=$(extract_backend_coverage_pct "$BACKEND_OUT")
+    [ -n "$COV" ] && BACKEND_COV="${COV}%"
 fi
 
 # ── 3. Frontend Unit Tests — Vitest with v8 coverage ─────────────────────────
 if [ "$RUN_FRONTEND" = true ]; then
-    section "Frontend Unit Tests  (Vitest + @vitest/coverage-v8)"
-    FRONTEND_OUT=$(docker compose --profile dev run --rm frontend-dev sh -c \
-        'npm install --save-dev @vitest/coverage-v8 --no-save --silent 2>/dev/null; \
-         npx vitest run --coverage --reporter=verbose' 2>&1) \
-        && FRONTEND_STATUS="PASS" || FRONTEND_STATUS="FAIL"
-    echo "$FRONTEND_OUT"
+    section "Frontend Unit Tests  (Vitest + @vitest/coverage-v8)  [Docker: vitest-runner]"
+    OUTFILE=$(mktemp)
+    set +e
+    docker compose --profile test run --rm -T vitest-runner 2>&1 | tee "$OUTFILE"
+    ST=${PIPESTATUS[0]}
+    set -e
+    FRONTEND_OUT=$(cat "$OUTFILE")
+    rm -f "$OUTFILE"
+    if [ "$ST" -eq 0 ]; then FRONTEND_STATUS="PASS"; else FRONTEND_STATUS="FAIL"; fi
 
-    # "Tests  5 passed (5)"
-    RAW=$(printf '%s' "$FRONTEND_OUT" | grep -oP 'Tests\s+\K\d+' | tail -1) \
-        && FRONTEND_TESTS="${RAW:-0}"
-    # coverage table row:  "All files  |  85.00  | ..."
-    COV=$(printf '%s' "$FRONTEND_OUT" | grep -oP 'All files\s*\|\s*\K[\d.]+' | head -1) \
-        && [ -n "$COV" ] && FRONTEND_COV="${COV}%"
+    RAW=$(extract_tests_passed "$FRONTEND_OUT")
+    FRONTEND_TESTS="${RAW:-0}"
+    COV=$(extract_frontend_coverage_pct "$FRONTEND_OUT")
+    [ -n "$COV" ] && FRONTEND_COV="${COV}%"
 fi
 
-# ── 4. E2E Tests — Playwright / Chromium ─────────────────────────────────────
+# ── 4. E2E Tests — Playwright / Chromium (needs nginx + built SPA in dist/) ──
 if [ "$RUN_E2E" = true ]; then
-    section "E2E Tests  (Playwright / Chromium)"
-    E2E_OUT=$(docker compose --profile test run --rm e2e-runner 2>&1) \
-        && E2E_STATUS="PASS" || E2E_STATUS="FAIL"
-    echo "$E2E_OUT"
+    section "Building frontend for E2E  (Docker: frontend-build → ./frontend/dist)"
+    OUTFILE=$(mktemp)
+    set +e
+    docker compose --profile test run --rm -T frontend-build 2>&1 | tee "$OUTFILE"
+    ST=${PIPESTATUS[0]}
+    set -e
+    BUILD_OUT=$(cat "$OUTFILE")
+    rm -f "$OUTFILE"
+    if [ "$ST" -ne 0 ]; then
+        echo "  ✖  Frontend build failed; skipping E2E." >&2
+        E2E_STATUS="FAIL"
+    else
+        section "E2E Tests  (Playwright / Chromium)  [Docker: e2e-runner → http://nginx]"
+        OUTFILE=$(mktemp)
+        set +e
+        docker compose --profile test run --rm -T e2e-runner 2>&1 | tee "$OUTFILE"
+        ST=${PIPESTATUS[0]}
+        set -e
+        E2E_OUT=$(cat "$OUTFILE")
+        rm -f "$OUTFILE"
+        if [ "$ST" -eq 0 ]; then E2E_STATUS="PASS"; else E2E_STATUS="FAIL"; fi
 
-    # "15 passed (15)"
-    RAW=$(printf '%s' "$E2E_OUT" | grep -oP '\d+ passed' | grep -oP '\d+' | tail -1) \
-        && E2E_TESTS="${RAW:-0}"
+        RAW=$(extract_e2e_passed "$E2E_OUT")
+        E2E_TESTS="${RAW:-0}"
+    fi
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────

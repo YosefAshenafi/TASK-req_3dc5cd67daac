@@ -27,36 +27,38 @@ case "$PHASE" in
     ;;
   2)
     echo "Phase 2: Auth & Identity"
-    docker compose --profile test run --rm test-runner php artisan test --filter=Auth
+    docker compose --profile test run --rm -T test-runner php artisan test --filter=Auth
     ;;
   3)
     echo "Phase 3: Media & Playlists"
-    docker compose --profile test run --rm test-runner php artisan test --filter="Media|Playlists|Favorites"
+    docker compose --profile test run --rm -T test-runner php artisan test --filter="Media|Playlists|Favorites"
     ;;
   4)
     echo "Phase 4: Search + Recommendations"
-    docker compose --profile test run --rm test-runner php artisan test --filter="Search|Recommend"
+    docker compose --profile test run --rm -T test-runner php artisan test --filter="Search|Recommend"
     ;;
   5)
     echo "Phase 5: Device Ingestion"
-    docker compose --profile test run --rm test-runner php artisan test --filter="Device|Replay|Dedup"
+    docker compose --profile test run --rm -T test-runner php artisan test --filter="Device|Replay|Dedup"
     ;;
   6|7|8|9)
     echo "Phase $PHASE: Frontend / E2E"
-    docker compose --profile test run --rm e2e-runner
+    docker compose --profile test run --rm -T frontend-build
+    docker compose --profile test run --rm -T e2e-runner
     ;;
   10)
     echo "Phase 10: Observability + Degradation"
-    docker compose --profile test run --rm test-runner php artisan test --filter="Monitoring|Degradation"
+    docker compose --profile test run --rm -T test-runner php artisan test --filter="Monitoring|Degradation"
     ;;
   11)
     echo "Phase 11: Security Hardening"
-    docker compose --profile test run --rm test-runner php artisan test --filter="Security|RateLimit|Purge"
+    docker compose --profile test run --rm -T test-runner php artisan test --filter="Security|RateLimit|Purge"
     ;;
   12)
     echo "Phase 12: Final Integration"
-    docker compose --profile test run --rm test-runner php artisan test
-    docker compose --profile test run --rm e2e-runner
+    docker compose --profile test run --rm -T test-runner php artisan test
+    docker compose --profile test run --rm -T frontend-build
+    docker compose --profile test run --rm -T e2e-runner
     ;;
   *)
     echo "Unknown phase: $PHASE"; exit 2 ;;

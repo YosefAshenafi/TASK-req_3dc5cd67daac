@@ -5,7 +5,7 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173'
 async function loginAsUser(page: any) {
   await page.goto(`${BASE_URL}/login`)
   await page.getByLabel('Username').fill('user1')
-  await page.getByLabel('Password').fill('password')
+  await page.getByRole('textbox', { name: 'Password' }).fill('password')
   await page.getByRole('button', { name: 'Sign In' }).click()
   await page.waitForURL('**/search', { timeout: 10000 })
 }

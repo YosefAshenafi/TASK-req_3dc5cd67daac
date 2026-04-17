@@ -38,7 +38,7 @@ test.describe('Login by role', () => {
       await expect(page.getByText('SmartPark')).toBeVisible()
 
       await page.getByLabel('Username').fill(config.username)
-      await page.getByLabel('Password').fill(config.password)
+      await page.getByRole('textbox', { name: 'Password' }).fill(config.password)
       await page.getByRole('button', { name: 'Sign In' }).click()
 
       await page.waitForURL(`**${config.expectedPath}`, { timeout: 10000 })
@@ -54,7 +54,7 @@ test.describe('Login by role', () => {
     await page.goto(`${BASE_URL}/login`)
 
     await page.getByLabel('Username').fill('notauser')
-    await page.getByLabel('Password').fill('wrongpassword')
+    await page.getByRole('textbox', { name: 'Password' }).fill('wrongpassword')
     await page.getByRole('button', { name: 'Sign In' }).click()
 
     await expect(page.getByRole('alert')).toBeVisible({ timeout: 5000 })
@@ -65,7 +65,7 @@ test.describe('Login by role', () => {
     // Login first
     await page.goto(`${BASE_URL}/login`)
     await page.getByLabel('Username').fill('user1')
-    await page.getByLabel('Password').fill('password')
+    await page.getByRole('textbox', { name: 'Password' }).fill('password')
     await page.getByRole('button', { name: 'Sign In' }).click()
     await page.waitForURL('**/search', { timeout: 10000 })
 

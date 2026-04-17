@@ -5,8 +5,11 @@ RUN apk add --no-cache \
         freetype-dev ffmpeg mysql-client sqlite sqlite-dev autoconf g++ make \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring intl zip gd bcmath opcache pcntl \
-    && pecl install redis pcov \
-    && docker-php-ext-enable redis pcov \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && pecl install pcov \
+    && docker-php-ext-enable pcov \
+    && php -r "if (!extension_loaded('pcov')) { fwrite(STDERR, 'pcov extension failed to load\n'); exit(1); }" \
     && apk del autoconf g++ make
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

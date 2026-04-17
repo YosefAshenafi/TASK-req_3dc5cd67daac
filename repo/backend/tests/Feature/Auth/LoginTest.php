@@ -117,3 +117,24 @@ test('admin can access admin endpoints', function () {
 
     $this->withToken($token)->getJson('/api/users')->assertStatus(200);
 });
+
+test('soft-deleted user cannot log in', function () {
+    $user = User::factory()->create(['username' => 'deleted_user']);
+    $user->delete();
+
+    $response = $this->postJson('/api/auth/login', [
+        'username' => 'deleted_user',
+        'password' => 'password',
+    ]);
+
+    $response->assertStatus(401);
+});
+
+test('using token after logout returns 401', function () {
+    $user  = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $this->withToken($token)->postJson('/api/auth/logout')->assertStatus(204);
+
+    $this->withToken($token)->getJson('/api/auth/me')->assertStatus(401);
+});

@@ -34,6 +34,7 @@ class GenerateThumbnails implements ShouldQueue
         // Only process image MIME types for thumbnails
         if (! str_starts_with($asset->mime, 'image/')) {
             Log::info("GenerateThumbnails: Skipping non-image asset {$this->assetId} ({$asset->mime}).");
+            $asset->update(['status' => 'ready']);
             return;
         }
 

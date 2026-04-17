@@ -68,6 +68,58 @@ test('search with sort=recommended and flag enabled does not set degraded header
     expect($response->headers->get('X-Recommendation-Degraded'))->not->toEqual('true');
 });
 
+test('recent_days filter returns only recent assets', function () {
+    $user  = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $recent = Asset::factory()->create(['title' => 'Recent Asset', 'status' => 'ready', 'created_at' => now()]);
+    $old    = Asset::factory()->create(['title' => 'Old Asset', 'status' => 'ready', 'created_at' => now()->subDays(60)]);
+
+    $response = $this->withToken($token)->getJson('/api/search?recent_days=30');
+
+    $ids = collect($response->json('items'))->pluck('id');
+    expect($ids)->toContain($recent->id);
+    expect($ids)->not->toContain($old->id);
+});
+
+test('per_page parameter limits number of results', function () {
+    $user  = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    Asset::factory()->count(10)->create(['status' => 'ready']);
+
+    $response = $this->withToken($token)->getJson('/api/search?per_page=3');
+
+    $response->assertStatus(200);
+    expect(count($response->json('items')))->toBeLessThanOrEqual(3);
+});
+
+test('sort=most_played returns assets ordered by play count', function () {
+    $user  = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $popular = Asset::factory()->create(['title' => 'Popular', 'status' => 'ready']);
+    $rare    = Asset::factory()->create(['title' => 'Rare', 'status' => 'ready']);
+
+    for ($i = 0; $i < 5; $i++) {
+        \App\Models\PlayHistory::create([
+            'user_id'  => $user->id,
+            'asset_id' => $popular->id,
+            'played_at' => now(),
+        ]);
+    }
+
+    $response = $this->withToken($token)->getJson('/api/search?sort=most_played');
+
+    $ids = collect($response->json('items'))->pluck('id')->toArray();
+    $popularIndex = array_search($popular->id, $ids);
+    $rareIndex    = array_search($rare->id, $ids);
+
+    if ($popularIndex !== false && $rareIndex !== false) {
+        expect($popularIndex)->toBeLessThan($rareIndex);
+    }
+});
+
 test('sort=newest returns most recently created assets first', function () {
     $user  = User::factory()->create();
     $token = $user->createToken('test')->plainTextToken;

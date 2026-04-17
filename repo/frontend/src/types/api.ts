@@ -171,11 +171,11 @@ export interface RedeemShareRequest {
 export interface SearchParams {
   q?: string
   tags?: string[]
-  max_duration_seconds?: number
-  recency_days?: number
-  sort?: 'played_count' | 'created_at' | 'recommended'
+  duration_lt?: number
+  recent_days?: number
+  sort?: 'most_played' | 'newest' | 'recommended'
   cursor?: string
-  limit?: number
+  per_page?: number
 }
 
 export interface UploadAssetMetadata {

@@ -49,6 +49,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/playlists/shares/{id}', [PlaylistController::class, 'revokeShare']);
     Route::apiResource('/playlists', PlaylistController::class);
     Route::post('/playlists/{id}/share', [PlaylistController::class, 'share']);
+    Route::post('/playlists/{id}/items', [PlaylistController::class, 'addItem']);
+    Route::delete('/playlists/{id}/items/{itemId}', [PlaylistController::class, 'removeItem']);
+    Route::put('/playlists/{id}/items/order', [PlaylistController::class, 'reorderItems']);
 
     // History
     Route::get('/history', [PlayHistoryController::class, 'index']);
@@ -82,7 +85,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::middleware(['role:admin,technician'])->group(function () {
         Route::post('/devices/events', [DeviceController::class, 'ingestEvent']);
         Route::get('/devices', [DeviceController::class, 'index']);
+        Route::get('/devices/{id}', [DeviceController::class, 'show']);
         Route::get('/devices/{id}/events', [DeviceController::class, 'events']);
+        Route::get('/devices/{id}/replay/audits', [DeviceController::class, 'replayAudits']);
         Route::post('/devices/{id}/replay', [DeviceController::class, 'replay']);
     });
 });

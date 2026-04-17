@@ -174,7 +174,7 @@ class PlaylistController extends Controller
             'code' => ['required', 'string', 'size:8'],
         ]);
 
-        $share = PlaylistShare::with('playlist.items')
+        $share = PlaylistShare::with(['playlist.items', 'playlist.owner'])
             ->where('code', strtoupper($request->input('code')))
             ->first();
 
@@ -192,6 +192,12 @@ class PlaylistController extends Controller
 
         // Clone the playlist
         $originalPlaylist = $share->playlist;
+
+        // Check owner eligibility
+        $owner = $originalPlaylist->owner;
+        if (! $owner || $owner->trashed() || in_array($owner->status, ['blacklisted', 'frozen'])) {
+            return response()->json(['message' => 'Playlist owner is not eligible for sharing.'], 403);
+        }
 
         $newPlaylist = DB::transaction(function () use ($request, $originalPlaylist) {
             $cloned = Playlist::create([
@@ -216,6 +222,94 @@ class PlaylistController extends Controller
             'owner_id'   => $newPlaylist->owner_id,
             'created_at' => $newPlaylist->created_at?->toIso8601String(),
         ], 201);
+    }
+
+    /**
+     * POST /api/playlists/{id}/items - Add an item to a playlist.
+     */
+    public function addItem(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'asset_id' => ['required', 'integer'],
+        ]);
+
+        $playlist = Playlist::findOrFail($id);
+        if ($playlist->owner_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $position = ($playlist->items()->max('position') ?? 0) + 1;
+
+        $item = PlaylistItem::create([
+            'playlist_id' => $playlist->id,
+            'asset_id'    => $request->input('asset_id'),
+            'position'    => $position,
+        ]);
+
+        return response()->json([
+            'id'          => $item->id,
+            'playlist_id' => $item->playlist_id,
+            'asset_id'    => $item->asset_id,
+            'position'    => $item->position,
+        ], 201);
+    }
+
+    /**
+     * DELETE /api/playlists/{id}/items/{itemId} - Remove an item from a playlist.
+     */
+    public function removeItem(Request $request, string $id, string $itemId): JsonResponse
+    {
+        $playlist = Playlist::findOrFail($id);
+        if ($playlist->owner_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $item = PlaylistItem::where('id', $itemId)
+            ->where('playlist_id', $playlist->id)
+            ->first();
+
+        if (! $item) {
+            return response()->json(['message' => 'Item not found.'], 404);
+        }
+
+        $item->delete();
+
+        return response()->json(null, 204);
+    }
+
+    /**
+     * PUT /api/playlists/{id}/items/order - Reorder items in a playlist.
+     */
+    public function reorderItems(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'items'             => ['required', 'array'],
+            'items.*.id'        => ['required', 'integer'],
+            'items.*.position'  => ['required', 'integer'],
+        ]);
+
+        $playlist = Playlist::findOrFail($id);
+        if ($playlist->owner_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        foreach ($request->input('items') as $entry) {
+            PlaylistItem::where('id', $entry['id'])
+                ->where('playlist_id', $playlist->id)
+                ->update(['position' => $entry['position']]);
+        }
+
+        $updated = PlaylistItem::where('playlist_id', $playlist->id)
+            ->orderBy('position')
+            ->get()
+            ->map(fn ($item) => [
+                'id'          => $item->id,
+                'playlist_id' => $item->playlist_id,
+                'asset_id'    => $item->asset_id,
+                'position'    => $item->position,
+            ]);
+
+        return response()->json($updated);
     }
 
     /**

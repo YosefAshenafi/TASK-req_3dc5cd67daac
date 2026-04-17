@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\FeatureFlag;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class SearchController extends Controller
@@ -24,8 +25,10 @@ class SearchController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $sort    = $request->input('sort', 'newest');
-        $perPage = min((int) $request->input('per_page', 25), 100);
+        $startMs      = (int) round(microtime(true) * 1000);
+        $sort         = $request->input('sort', 'newest');
+        $originalSort = $sort;
+        $perPage      = min((int) $request->input('per_page', 25), 100);
 
         $degraded = false;
 
@@ -118,6 +121,15 @@ class SearchController extends Controller
         $items      = $items->take($perPage);
         $nextCursor = $hasMore ? $items->last()?->id : null;
 
+        // Track recommendation hit rate
+        if ($originalSort === 'recommended') {
+            Cache::increment('monitoring:recommendation_requests');
+            $hits = $items->filter(fn ($a) => ! is_null(json_decode($a->reason_tags_json ?? 'null')))->count();
+            if ($hits > 0) {
+                Cache::increment('monitoring:recommendation_hits');
+            }
+        }
+
         $response = response()->json([
             'items'       => $items->map(fn ($a) => [
                 'id'                => $a->id,
@@ -136,6 +148,17 @@ class SearchController extends Controller
 
         if ($degraded) {
             $response->header('X-Recommendation-Degraded', 'true');
+        }
+
+        // Record latency to Redis rolling window
+        $latencyMs     = (int) round(microtime(true) * 1000) - $startMs;
+        $windowSeconds = config('smartpark.latency_window_minutes', 5) * 60;
+        $now           = time();
+        try {
+            Cache::getRedis()->zAdd('monitoring:latency_samples', $now, "{$now}:{$latencyMs}");
+            Cache::getRedis()->zRemRangeByScore('monitoring:latency_samples', '-inf', $now - $windowSeconds);
+        } catch (\Throwable) {
+            // Redis unavailable — don't break the search response
         }
 
         return $response;

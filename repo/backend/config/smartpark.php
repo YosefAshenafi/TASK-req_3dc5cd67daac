@@ -12,7 +12,11 @@ return [
     |
     */
 
-    'circuit_breaker_threshold' => env('CIRCUIT_BREAKER_THRESHOLD', 10),
+    'circuit_breaker_threshold'        => env('CIRCUIT_BREAKER_THRESHOLD', 10),
+    'latency_p95_threshold_ms'         => (int) env('LATENCY_P95_THRESHOLD_MS', 800),
+    'latency_window_minutes'           => (int) env('LATENCY_WINDOW_MINUTES', 5),
+    'recommendation_hit_rate_min'      => (float) env('RECOMMENDATION_HIT_RATE_MIN', 0.10),
+    'circuit_breaker_recovery_minutes' => (int) env('CIRCUIT_BREAKER_RECOVERY_MINUTES', 15),
 
     /*
     |--------------------------------------------------------------------------

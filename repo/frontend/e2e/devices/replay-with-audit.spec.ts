@@ -1,3 +1,8 @@
+// NOTE: These tests use mocked Playwright route handlers for all API calls
+// (/api/devices, /api/devices/{id}, /api/devices/{id}/events,
+// /api/devices/{id}/replay/audits, /api/devices/{id}/replay).
+// They are component-level browser tests, NOT full end-to-end tests against
+// the live backend. The mocked route paths match the correct backend routes.
 import { test, expect } from '@playwright/test'
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5173'

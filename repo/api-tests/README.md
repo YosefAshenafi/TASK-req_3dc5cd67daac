@@ -1,36 +1,33 @@
 # API Tests
 
-HTTP-level contract tests that exercise every endpoint declared in `../docs/api-specs.md`.
+HTTP-level contract tests that exercise every SmartPark endpoint.
 
-- **Tooling:** Pest (PHP) for controller + integration tests, runnable inside the `test-runner` container.
-- **Scope:** auth, users, media, favorites, playlists (incl. share/redeem), recommendations, device events, replay, monitoring.
-- **Database:** uses a dedicated `smartpark_test` MySQL schema; refreshed between runs via `RefreshDatabase` trait.
-- **Run:**
-  ```bash
-  docker compose --profile test run --rm test-runner \
-    php artisan test --testsuite=Api
-  ```
+- **Tooling:** Pest (PHP), runnable inside the `test-runner` Docker container.
+- **Database:** Dedicated `smartpark_test` MySQL schema; refreshed per run via `RefreshDatabase`.
 
-## Layout (created during Phase 2 onward)
+## Run
+
+```bash
+docker compose --profile test run --rm test-runner php artisan test --testsuite=Api
+```
+
+## Test files
 
 ```
-api-tests/
+backend/tests/Feature/
 ├── Auth/
-│   └── LoginTest.php
+│   ├── LoginTest.php
+│   └── UserManagementTest.php
 ├── Media/
 │   ├── AssetUploadTest.php
 │   └── AssetDeleteReferencedTest.php
 ├── Playlists/
-│   ├── ShareRedeemTest.php
-│   └── PlaylistCrudTest.php
+│   ├── PlaylistCrudTest.php
+│   └── ShareRedeemTest.php
 ├── Search/
 │   └── SearchRankingTest.php
 ├── Devices/
-│   ├── IngestionDedupTest.php
-│   ├── OutOfOrderTest.php
-│   └── ReplayAuditTest.php
+│   └── IngestionDedupTest.php
 └── Monitoring/
     └── DegradationFlagTest.php
 ```
-
-Each test is a black-box HTTP call against the booted Laravel app with factories for seed data. See the **Exit Criteria** checklist in `../PLAN.md` for the tests that gate each phase.

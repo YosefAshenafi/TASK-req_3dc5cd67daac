@@ -85,21 +85,39 @@ test('redeem refused when owner is blacklisted', function () {
 
     $playlist = Playlist::factory()->create(['owner_id' => $owner->id]);
 
-    $share = PlaylistShare::create([
+    PlaylistShare::create([
         'playlist_id' => $playlist->id,
         'code'        => 'TESTCD01',
         'created_by'  => $owner->id,
         'expires_at'  => now()->addDay(),
     ]);
 
-    // Redeem should be blocked for blacklisted owners
-    // The controller currently checks the share validity but we may need to add owner blacklist check
-    // For now test that redemption works (owner blacklist check is an enhancement)
     $response = $this->withToken($redeemerToken)
         ->postJson('/api/playlists/redeem', ['code' => 'TESTCD01']);
 
-    // Response is either 201 (cloned) or 403 (owner blacklisted) depending on implementation
-    expect($response->status())->toBeIn([201, 403]);
+    $response->assertStatus(403);
+});
+
+test('redeem refused when owner is soft-deleted', function () {
+    $owner    = User::factory()->create();
+    $redeemer = User::factory()->create();
+    $redeemerToken = $redeemer->createToken('test')->plainTextToken;
+
+    $playlist = Playlist::factory()->create(['owner_id' => $owner->id]);
+
+    PlaylistShare::create([
+        'playlist_id' => $playlist->id,
+        'code'        => 'TESTCD02',
+        'created_by'  => $owner->id,
+        'expires_at'  => now()->addDay(),
+    ]);
+
+    $owner->delete();
+
+    $response = $this->withToken($redeemerToken)
+        ->postJson('/api/playlists/redeem', ['code' => 'TESTCD02']);
+
+    $response->assertStatus(403);
 });
 
 test('share rate limit returns 429 after 5 requests', function () {

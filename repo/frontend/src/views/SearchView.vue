@@ -13,7 +13,7 @@ const query = ref('')
 const selectedTags = ref<string[]>([])
 const maxDuration = ref<number | null>(null)
 const recencyDays = ref<number | null>(null)
-const sort = ref<'played_count' | 'created_at' | 'recommended'>('recommended')
+const sort = ref<'most_played' | 'newest' | 'recommended'>('recommended')
 
 const assets = ref<Asset[]>([])
 const nextCursor = ref<string | null>(null)
@@ -42,8 +42,8 @@ const recencyOptions = [
 
 const sortOptions = [
   { label: 'Recommended', value: 'recommended' as const },
-  { label: 'Most Played', value: 'played_count' as const },
-  { label: 'Newest', value: 'created_at' as const },
+  { label: 'Most Played', value: 'most_played' as const },
+  { label: 'Newest', value: 'newest' as const },
 ]
 
 async function fetchAssets(reset = false) {
@@ -63,11 +63,11 @@ async function fetchAssets(reset = false) {
       {
         q: query.value || undefined,
         tags: selectedTags.value.length ? selectedTags.value : undefined,
-        max_duration_seconds: maxDuration.value ?? undefined,
-        recency_days: recencyDays.value ?? undefined,
+        duration_lt: maxDuration.value ?? undefined,
+        recent_days: recencyDays.value ?? undefined,
         sort: sort.value,
         cursor: reset ? undefined : nextCursor.value ?? undefined,
-        limit: 24,
+        per_page: 24,
       },
       abortController.signal,
     )

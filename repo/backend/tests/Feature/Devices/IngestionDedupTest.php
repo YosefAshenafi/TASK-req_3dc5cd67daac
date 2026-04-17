@@ -112,3 +112,54 @@ test('device roster is accessible to technician', function () {
 
     $this->withToken($token)->getJson('/api/devices')->assertStatus(200);
 });
+
+test('ingested event has status accepted in events listing', function () {
+    [, $token] = makeDeviceToken();
+
+    $deviceId = 'gate-status-test-01';
+    $iKey     = (string) Str::uuid();
+
+    $this->withToken($token)
+        ->withHeaders(['X-Idempotency-Key' => $iKey])
+        ->postJson('/api/devices/events', makeDevicePayload($deviceId, 1, $iKey))
+        ->assertStatus(201);
+
+    $response = $this->withToken($token)->getJson("/api/devices/{$deviceId}/events");
+
+    $response->assertStatus(200);
+    $items = $response->json('items');
+    expect($items)->not->toBeEmpty();
+    expect($items[0]['status'])->toBe('accepted');
+});
+
+test('out-of-order event has status out_of_order in events listing', function () {
+    [, $token] = makeDeviceToken();
+
+    $deviceId = 'gate-oor-status-01';
+    Device::create(['id' => $deviceId, 'kind' => 'gate', 'last_sequence_no' => 500]);
+
+    $iKey = (string) Str::uuid();
+    $this->withToken($token)
+        ->withHeaders(['X-Idempotency-Key' => $iKey])
+        ->postJson('/api/devices/events', makeDevicePayload($deviceId, 50, $iKey))
+        ->assertStatus(202);
+
+    $response = $this->withToken($token)->getJson("/api/devices/{$deviceId}/events");
+
+    $response->assertStatus(200);
+    $items = $response->json('items');
+    expect($items)->not->toBeEmpty();
+    expect($items[0]['status'])->toBe('out_of_order');
+});
+
+test('GET /devices/{id} returns device detail with label field', function () {
+    [, $token] = makeDeviceToken();
+
+    Device::create(['id' => 'gate-detail-01', 'kind' => 'gate', 'label' => 'West Entrance', 'last_sequence_no' => 0]);
+
+    $response = $this->withToken($token)->getJson('/api/devices/gate-detail-01');
+
+    $response->assertStatus(200)
+        ->assertJsonStructure(['id', 'kind', 'label', 'last_sequence_no'])
+        ->assertJsonPath('label', 'West Entrance');
+});

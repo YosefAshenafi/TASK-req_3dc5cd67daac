@@ -1,40 +1,41 @@
 # End-to-End Tests
 
-Browser-level tests that drive the deployed SPA against the real Laravel API, MySQL, and Redis inside Docker. Each scenario maps to a user story from the prompt.
+Browser-level tests using Playwright (TypeScript) with Chromium in two profiles:
+- **kiosk** — 1024×1366 tablet viewport, touch enabled
+- **desktop** — standard Chromium viewport
 
-- **Tooling:** Playwright (TypeScript) with Chromium (kiosk profile) and desktop profile.
-- **Run:**
-  ```bash
-  docker compose --profile test up -d nginx backend queue-worker scheduler mysql redis
-  docker compose --profile test run --rm e2e-runner
-  ```
+## Run
 
-## Scenarios (one spec file each)
+```bash
+# Ensure backend is running first
+docker compose up -d mysql redis backend nginx queue-worker scheduler
+
+# Run E2E suite
+docker compose --profile test run --rm e2e-runner
+```
+
+## Spec files
 
 ```
-e2e-tests/
+frontend/e2e/
 ├── auth/
-│   └── login-by-role.spec.ts          # each role lands on its view
+│   └── login-by-role.spec.ts
 ├── library/
-│   ├── search-filter-sort.spec.ts      # tags + duration + recency + sort
-│   └── recommended-degradation.spec.ts # breaker trips → badge appears
-├── favorites-and-playlists/
+│   ├── search-filter-sort.spec.ts
 │   ├── favorite-and-unfavorite.spec.ts
+│   └── recommended-degradation.spec.ts
+├── playlists/
 │   ├── playlist-build-edit.spec.ts
 │   └── share-redeem-on-second-kiosk.spec.ts
-├── now-playing/
-│   └── recent-plays-and-reasons.spec.ts
 ├── admin/
 │   ├── user-freeze-blacklist.spec.ts
-│   ├── upload-validation.spec.ts       # magic-byte + size caps
+│   ├── upload-validation.spec.ts
 │   ├── delete-referenced-asset.spec.ts
 │   └── monitoring-dashboard.spec.ts
 └── devices/
     ├── duplicate-and-out-of-order.spec.ts
-    ├── buffered-retransmission.spec.ts
-    └── replay-with-audit.spec.ts
+    ├── buffered-retransmission.spec.ts   ← uses mocked API routes (not full E2E)
+    └── replay-with-audit.spec.ts         ← uses mocked API routes (not full E2E)
 ```
 
-## Kiosk profile
-
-A Playwright project `smartpark-kiosk` boots Chromium with a tablet viewport (1024×1366) and `hasTouch: true` so tap-target regressions are caught automatically.
+Note: `buffered-retransmission.spec.ts` and `replay-with-audit.spec.ts` use Playwright route mocks for device API calls. They are component-level browser tests, not full end-to-end tests against the live backend.

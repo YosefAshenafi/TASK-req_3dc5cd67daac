@@ -8,14 +8,18 @@ class MediaValidator
     private const IMAGE_DOC_MAX_BYTES = 25 * 1024 * 1024;   // 25 MB
     private const VIDEO_MAX_BYTES     = 250 * 1024 * 1024;  // 250 MB
 
+    private const ALLOWED_MIME_TYPES = [
+        'image/jpeg',
+        'image/png',
+        'application/pdf',
+        'audio/mpeg',
+        'video/mp4',
+    ];
+
     // MIME types treated as video/audio (higher size limit)
     private const LARGE_MIME_TYPES = [
         'video/mp4',
-        'video/webm',
-        'video/ogg',
         'audio/mpeg',
-        'audio/ogg',
-        'audio/wav',
     ];
 
     /**
@@ -29,6 +33,10 @@ class MediaValidator
     {
         if (! file_exists($tempPath)) {
             return $this->fail('file_not_found', 'Temporary file not found.');
+        }
+
+        if (! in_array($declaredMime, self::ALLOWED_MIME_TYPES, true)) {
+            return $this->fail('mime_not_allowed', "File type '{$declaredMime}' is not permitted. Allowed: JPEG, PNG, PDF, MP3, MP4.");
         }
 
         $size = filesize($tempPath);
@@ -120,8 +128,7 @@ class MediaValidator
                 return $this->fail('magic_mismatch', 'File does not appear to be a valid MP4 video file.');
 
             default:
-                // For unrecognized MIME types, allow the file (rely on size check only)
-                return $this->ok();
+                return $this->fail('mime_not_allowed', "Unrecognized MIME type '{$declaredMime}'.");
         }
     }
 

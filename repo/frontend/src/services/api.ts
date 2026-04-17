@@ -208,9 +208,9 @@ export const usersApi = {
   },
   create: (payload: CreateUserRequest): Promise<User> => post<User>('/users', payload),
   freeze: (id: number, payload: FreezeUserRequest): Promise<User> =>
-    post<User>(`/users/${id}/freeze`, payload),
-  unfreeze: (id: number): Promise<User> => post<User>(`/users/${id}/unfreeze`),
-  blacklist: (id: number): Promise<User> => post<User>(`/users/${id}/blacklist`),
+    patch<User>(`/users/${id}/freeze`, payload),
+  unfreeze: (id: number): Promise<User> => patch<User>(`/users/${id}/unfreeze`),
+  blacklist: (id: number): Promise<User> => patch<User>(`/users/${id}/blacklist`),
   softDelete: (id: number): Promise<void> => del(`/users/${id}`),
 }
 
@@ -236,7 +236,7 @@ export const assetsApi = {
     fd.append('title', metadata.title)
     if (metadata.description) fd.append('description', metadata.description)
     if (metadata.tags) fd.append('tags', metadata.tags.join(','))
-    return post<Asset>('/assets/upload', fd)
+    return post<Asset>('/assets', fd)
   },
 }
 
@@ -250,12 +250,12 @@ export const searchApi = {
     const qs = new URLSearchParams()
     if (params.q) qs.set('q', params.q)
     if (params.tags?.length) params.tags.forEach((t) => qs.append('tags', t))
-    if (params.max_duration_seconds != null)
-      qs.set('max_duration_seconds', String(params.max_duration_seconds))
-    if (params.recency_days != null) qs.set('recency_days', String(params.recency_days))
+    if (params.duration_lt != null)
+      qs.set('duration_lt', String(params.duration_lt))
+    if (params.recent_days != null) qs.set('recent_days', String(params.recent_days))
     if (params.sort) qs.set('sort', params.sort)
     if (params.cursor) qs.set('cursor', params.cursor)
-    if (params.limit) qs.set('limit', String(params.limit))
+    if (params.per_page) qs.set('per_page', String(params.per_page))
 
     const { data, response } = await getWithResponse<SearchResponse>(
       `/search?${qs}`,
@@ -272,7 +272,7 @@ export const searchApi = {
 export const favoritesApi = {
   list: (cursor?: string): Promise<PaginatedResponse<Favorite>> =>
     get<PaginatedResponse<Favorite>>(`/favorites${cursor ? `?cursor=${cursor}` : ''}`),
-  add: (assetId: number): Promise<Favorite> => post<Favorite>(`/favorites/${assetId}`),
+  add: (assetId: number): Promise<Favorite> => put<Favorite>(`/favorites/${assetId}`),
   remove: (assetId: number): Promise<void> => del(`/favorites/${assetId}`),
 }
 
@@ -297,7 +297,7 @@ export const playlistsApi = {
   share: (playlistId: number, payload?: CreateShareRequest): Promise<PlaylistShare> =>
     post<PlaylistShare>(`/playlists/${playlistId}/share`, payload),
   revokeShare: (playlistId: number, shareId: number): Promise<void> =>
-    del(`/playlists/${playlistId}/shares/${shareId}`),
+    del(`/playlists/shares/${shareId}`),
   redeem: (code: string): Promise<Playlist> => post<Playlist>('/playlists/redeem', { code }),
 }
 
@@ -312,7 +312,7 @@ export const historyApi = {
     assetId: number,
     context?: string,
   ): Promise<PlayHistoryEntry> =>
-    post<PlayHistoryEntry>('/history', { asset_id: assetId, context }),
+    post<PlayHistoryEntry>(`/assets/${assetId}/play`, { context }),
 }
 
 // ─── Recommendations ──────────────────────────────────────────────────────────

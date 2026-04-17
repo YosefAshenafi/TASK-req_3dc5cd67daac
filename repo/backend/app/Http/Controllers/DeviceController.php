@@ -64,14 +64,16 @@ class DeviceController extends Controller
             $isOutOfOrder = $sequenceNo <= $device->last_sequence_no;
 
             $event = DeviceEvent::create([
-                'device_id'       => $deviceId,
-                'event_type'      => $request->input('event_type'),
-                'sequence_no'     => $sequenceNo,
-                'idempotency_key' => $idempotencyKey,
-                'occurred_at'     => $occurredAt,
-                'received_at'     => now(),
-                'is_out_of_order' => $isOutOfOrder,
-                'payload_json'    => $request->input('payload'),
+                'device_id'          => $deviceId,
+                'event_type'         => $request->input('event_type'),
+                'sequence_no'        => $sequenceNo,
+                'idempotency_key'    => $idempotencyKey,
+                'occurred_at'        => $occurredAt,
+                'received_at'        => now(),
+                'is_out_of_order'    => $isOutOfOrder,
+                'payload_json'       => $request->input('payload'),
+                'status'             => $isOutOfOrder ? 'out_of_order' : 'accepted',
+                'buffered_by_gateway' => $request->header('X-Buffered') === 'true',
             ]);
 
             if ($isOutOfOrder) {
@@ -133,12 +135,29 @@ class DeviceController extends Controller
         $devices = Device::orderBy('id')->get();
 
         return response()->json($devices->map(fn ($d) => [
-            'id'              => $d->id,
-            'location_label'  => $d->location_label,
+            'id'               => $d->id,
+            'kind'             => $d->kind,
+            'label'            => $d->label,
             'last_sequence_no' => $d->last_sequence_no,
-            'last_seen_at'    => $d->last_seen_at?->toIso8601String(),
-            'created_at'      => $d->created_at?->toIso8601String(),
+            'last_seen_at'     => $d->last_seen_at?->toIso8601String(),
+            'created_at'       => $d->created_at?->toIso8601String(),
         ]));
+    }
+
+    /**
+     * GET /api/devices/{id} - Get device detail.
+     */
+    public function show(Request $request, string $id): JsonResponse
+    {
+        $device = Device::findOrFail($id);
+        return response()->json([
+            'id'               => $device->id,
+            'kind'             => $device->kind,
+            'label'            => $device->label,
+            'last_sequence_no' => $device->last_sequence_no,
+            'last_seen_at'     => $device->last_seen_at?->toIso8601String(),
+            'created_at'       => $device->created_at?->toIso8601String(),
+        ]);
     }
 
     /**
@@ -173,6 +192,27 @@ class DeviceController extends Controller
             ]),
             'next_cursor' => $nextCursor,
         ]);
+    }
+
+    /**
+     * GET /api/devices/{id}/replay/audits - List replay audits for a device.
+     */
+    public function replayAudits(Request $request, string $id): JsonResponse
+    {
+        $device = Device::findOrFail($id);
+        $audits = ReplayAudit::where('device_id', $device->id)
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
+        return response()->json($audits->map(fn ($a) => [
+            'id'                => $a->id,
+            'device_id'         => $a->device_id,
+            'initiated_by'      => $a->initiated_by,
+            'since_sequence_no' => $a->since_sequence_no,
+            'until_sequence_no' => $a->until_sequence_no,
+            'reason'            => $a->reason,
+            'created_at'        => $a->created_at?->toIso8601String(),
+        ]));
     }
 
     /**

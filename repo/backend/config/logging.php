@@ -53,8 +53,9 @@ return [
     'channels' => [
 
         'stack' => [
-            'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'driver'            => 'stack',
+            'channels'          => explode(',', (string) env('LOG_STACK', 'single')),
+            'processors'        => [App\Logging\MaskSensitiveFields::class],
             'ignore_exceptions' => false,
         ],
 

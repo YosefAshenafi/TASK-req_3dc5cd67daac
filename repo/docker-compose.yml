@@ -142,7 +142,7 @@ services:
     container_name: smartpark-nginx
     restart: unless-stopped
     depends_on:
-      backend: { condition: service_started }
+      backend: { condition: service_healthy }
     ports:
       - "8090:80"
     volumes:

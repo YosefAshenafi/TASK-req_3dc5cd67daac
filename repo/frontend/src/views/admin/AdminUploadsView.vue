@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import type { Asset } from '@/types/api'
 import { useUiStore } from '@/stores/ui'
 import { ApiError, getStoredToken, assetsApi } from '@/services/api'
+import { useUnsavedGuard } from '@/composables/useUnsavedGuard'
 import { Upload, CheckCircle2, X } from 'lucide-vue-next'
 
 const uiStore = useUiStore()
@@ -17,6 +18,7 @@ interface UploadEntry {
   status: 'pending' | 'uploading' | 'done' | 'error'
   errorMessage?: string
   result?: Asset
+  previewUrl?: string
 }
 
 const entries = ref<UploadEntry[]>([])
@@ -63,6 +65,7 @@ function createEntry(file: File): UploadEntry {
     tags: '',
     progress: 0,
     status: 'pending',
+    previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined,
   }
 }
 
@@ -94,8 +97,21 @@ function addFiles(files: File[]) {
 }
 
 function removeEntry(id: string) {
+  const target = entries.value.find((e) => e.id === id)
+  if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl)
   entries.value = entries.value.filter((e) => e.id !== id)
 }
+
+onBeforeUnmount(() => {
+  for (const entry of entries.value) {
+    if (entry.previewUrl) URL.revokeObjectURL(entry.previewUrl)
+  }
+})
+
+useUnsavedGuard(
+  () => entries.value.some((e) => e.status !== 'done'),
+  'You have image uploads that are not saved yet. Leave without uploading?',
+)
 
 async function uploadEntry(entry: UploadEntry) {
   entry.status = 'uploading'
@@ -233,9 +249,17 @@ function formatSize(bytes: number): string {
           ]"
         >
           <div class="flex items-start justify-between gap-4 mb-4">
-            <div class="flex-1 min-w-0">
-              <p class="text-sm font-semibold text-gray-800 truncate">{{ entry.file.name }}</p>
-              <p class="text-xs text-gray-400 mt-0.5">{{ formatSize(entry.file.size) }}</p>
+            <div class="flex items-start gap-3 flex-1 min-w-0">
+              <img
+                v-if="entry.previewUrl"
+                :src="entry.previewUrl"
+                :alt="`Preview of ${entry.file.name}`"
+                class="w-14 h-14 rounded-lg object-cover border border-gray-200 bg-gray-50 flex-shrink-0"
+              />
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-gray-800 truncate">{{ entry.file.name }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">{{ formatSize(entry.file.size) }}</p>
+              </div>
             </div>
             <div class="flex items-center gap-2">
               <span :class="[

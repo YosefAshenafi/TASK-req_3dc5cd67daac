@@ -38,7 +38,7 @@ if [ "$1" = "php-fpm" ]; then
 
     run_as_www env \
         APP_ENV="${APP_ENV:-local}" \
-        SEED_DEFAULT_ACCOUNTS="${SEED_DEFAULT_ACCOUNTS:-false}" \
+        ${SEED_DEFAULT_ACCOUNTS:+SEED_DEFAULT_ACCOUNTS="$SEED_DEFAULT_ACCOUNTS"} \
         bash -c '
         set -e
         cd /var/www/html

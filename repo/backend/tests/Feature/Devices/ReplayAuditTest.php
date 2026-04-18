@@ -29,6 +29,29 @@ test('replay creates an audit record and returns full ReplayAudit resource', fun
     expect($audit->reason)->toEqual('LAN outage');
 });
 
+test('technician can list replay audits for a device', function () {
+    $tech  = User::factory()->technician()->create();
+    $token = $tech->createToken('test')->plainTextToken;
+
+    Device::create(['id' => 'gate-audit-list-01', 'kind' => 'gate', 'last_sequence_no' => 0]);
+
+    ReplayAudit::create([
+        'device_id'         => 'gate-audit-list-01',
+        'initiated_by'      => $tech->id,
+        'since_sequence_no' => 1,
+        'until_sequence_no' => 50,
+        'reason'            => 'Test listing audit',
+        'created_at'        => now(),
+    ]);
+
+    $response = $this->withToken($token)->getJson('/api/devices/gate-audit-list-01/replay/audits');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.device_id', 'gate-audit-list-01')
+        ->assertJsonPath('0.reason', 'Test listing audit');
+});
+
 test('deduplication still applies after replay', function () {
     $tech  = User::factory()->technician()->create();
     $token = $tech->createToken('test')->plainTextToken;

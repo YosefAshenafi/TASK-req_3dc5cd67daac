@@ -28,8 +28,8 @@ test.describe('Duplicate and out-of-order events', () => {
     const offlineBadge = page.getByText('Offline').first()
     const hasOnline = await onlineBadge.isVisible()
     const hasOffline = await offlineBadge.isVisible()
-    // At least one status should be shown if devices exist
-    expect(true).toBe(true)
+    // At least one status indicator should be visible in the roster.
+    expect(hasOnline || hasOffline).toBe(true)
   })
 
   test('device detail shows event status filter chips', async ({ page }) => {

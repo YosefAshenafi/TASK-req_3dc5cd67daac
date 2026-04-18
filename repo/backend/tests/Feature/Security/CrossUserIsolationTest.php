@@ -68,6 +68,19 @@ test('user A cannot revoke user B share code', function () {
         ->assertStatus(404); // not found because owner check scopes the query
 });
 
+test('user can remove a favorite', function () {
+    $user  = User::factory()->create();
+    $asset = Asset::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    Favorite::create(['user_id' => $user->id, 'asset_id' => $asset->id]);
+
+    $this->withToken($token)->deleteJson("/api/favorites/{$asset->id}")
+        ->assertStatus(204);
+
+    expect(Favorite::where('user_id', $user->id)->where('asset_id', $asset->id)->exists())->toBeFalse();
+});
+
 test('duplicate username returns 422', function () {
     $admin = User::factory()->admin()->create();
     $token = $admin->createToken('test')->plainTextToken;

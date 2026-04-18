@@ -1,5 +1,7 @@
 # SmartPark Media Operations
 
+**Project type: fullstack** — Vue 3 SPA + Laravel REST API.
+
 Local-first, on-prem parking site media + device-ingestion platform.
 
 - **Stack:** Vue 3 + TypeScript (SPA) · Laravel / PHP 8.3 (API) · MySQL 8 · Redis 7 · Local disk (media)
@@ -12,13 +14,15 @@ Local-first, on-prem parking site media + device-ingestion platform.
 ## Quick start — single command
 
 ```bash
-docker compose up
+docker-compose up
 ```
+
+> **Tip:** Modern Docker CLI also accepts `docker compose up` (space form); both are equivalent.
 
 That's it. Docker Compose will:
 
 1. Start **MySQL 8** and **Redis 7**
-2. Build and start the **Laravel backend** — automatically runs `composer install`, database migrations, and seeds default accounts
+2. Build and start the **Laravel backend** with dependencies already baked into the container image, then run database migrations and seed default accounts
 3. Start the **queue worker** (Laravel Horizon) and **scheduler**
 4. Start **Nginx** (serves API + SPA on port 8090)
 
@@ -28,7 +32,27 @@ Once all containers are healthy, open:
 http://localhost:8090
 ```
 
-> **Note:** On the very first run, image builds and Composer installs take a few minutes. Subsequent starts are fast.
+> **Note:** On the very first run, image builds and container startup tasks can take a few minutes. Subsequent starts are fast.
+
+### Verification
+
+Confirm the API is up and the SPA is reachable:
+
+```bash
+# 1. Check the health endpoint
+curl http://localhost:8090/api/health
+# Expected: {"status":"ok"}
+
+# 2. Log in as admin and receive a Bearer token
+curl -s -X POST http://localhost:8090/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"password"}' | jq .
+# Expected: {"token":"<bearer>","user":{"username":"admin","role":"admin",...}}
+
+# 3. Open the SPA in a browser
+#    http://localhost:8090
+#    Log in as admin / password, then browse Search, Playlists, Admin console.
+```
 
 ### Default credentials (local / development only)
 
@@ -47,8 +71,9 @@ passwords are never emitted to the application log.
 | Regular user | `user1`  | `password`                |
 | Technician   | `tech1`  | `password`                |
 
-For production deployments, create accounts explicitly with `php artisan tinker` or an
-operator-run migration — never with the well-known password above.
+For production deployments, create accounts explicitly from inside the backend container
+(for example, `docker compose exec backend php artisan tinker`) or an operator-run migration
+— never with the well-known password above.
 
 ### Database connection (host access)
 
@@ -159,7 +184,7 @@ repo/
 ├── docker/
 │   ├── php/
 │   │   ├── Dockerfile       ← PHP 8.3-fpm + PCOV + entrypoint
-│   │   └── entrypoint.sh    ← auto composer install / migrate / seed
+│   │   └── entrypoint.sh    ← container bootstrap (env, migrate, seed)
 │   ├── frontend/Dockerfile
 │   ├── nginx/default.conf
 │   ├── mysql/

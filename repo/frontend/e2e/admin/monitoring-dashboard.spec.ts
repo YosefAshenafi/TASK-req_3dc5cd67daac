@@ -52,7 +52,7 @@ test.describe('Monitoring dashboard', () => {
     await expect(refreshBtn).toBeVisible()
     await refreshBtn.click()
     await page.waitForTimeout(500)
-    expect(true).toBe(true)
+    await expect(page.getByRole('heading', { name: 'Monitoring' })).toBeVisible()
   })
 
   test('feature flags section shows reset buttons', async ({ page }) => {
@@ -76,10 +76,6 @@ test.describe('Monitoring dashboard', () => {
     await page.waitForTimeout(1000)
 
     await expect(page.getByRole('heading', { name: 'Feature Flags' })).toBeVisible()
-    const resetBtn = page.getByRole('button', { name: 'Reset' }).first()
-    if (await resetBtn.isVisible()) {
-      await expect(resetBtn).toBeVisible()
-    }
-    expect(true).toBe(true)
+    await expect(page.getByRole('button', { name: 'Reset' }).first()).toBeVisible()
   })
 })

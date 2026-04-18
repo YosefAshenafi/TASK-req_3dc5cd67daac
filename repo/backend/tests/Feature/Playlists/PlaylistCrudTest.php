@@ -47,6 +47,16 @@ test('user can get a playlist with items', function () {
         ->assertJsonCount(1, 'items');
 });
 
+test('user can update a playlist via PUT', function () {
+    $user     = User::factory()->create();
+    $token    = $user->createToken('test')->plainTextToken;
+    $playlist = Playlist::factory()->create(['owner_id' => $user->id]);
+
+    $this->withToken($token)->putJson("/api/playlists/{$playlist->id}", [
+        'name' => 'PUT Updated Name',
+    ])->assertStatus(200)->assertJsonPath('name', 'PUT Updated Name');
+});
+
 test('user can rename a playlist', function () {
     $user     = User::factory()->create();
     $token    = $user->createToken('test')->plainTextToken;

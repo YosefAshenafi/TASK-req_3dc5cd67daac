@@ -38,13 +38,7 @@ test.describe('Recommendation degradation banner', () => {
     await page.goto(`${BASE_URL}/search`)
     await page.waitForTimeout(1000)
 
-    const badge = page.getByText('Recommendations degraded')
-    const isVisible = await badge.isVisible()
-    if (isVisible) {
-      await expect(badge).toBeVisible()
-    }
-    // Test is informational — degradation display depends on API response
-    expect(true).toBe(true)
+    await expect(page.getByText('Recommendations degraded')).toBeVisible()
   })
 
   test('recommended sort button exists', async ({ page }) => {

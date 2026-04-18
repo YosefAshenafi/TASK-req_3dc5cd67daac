@@ -46,8 +46,8 @@ test.describe('Favorite and unfavorite', () => {
       const heartButton = assetTiles.first().locator('button[aria-label*="favorite"]')
       await expect(heartButton).toBeVisible()
     } else {
-      // No assets to test, skip gracefully
-      expect(true).toBe(true)
+      // If no assets are returned, the page should render its empty-state copy.
+      await expect(page.getByText('No results found')).toBeVisible()
     }
   })
 })

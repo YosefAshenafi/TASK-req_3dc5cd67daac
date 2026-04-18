@@ -130,11 +130,31 @@ test('soft-deleted user cannot log in', function () {
     $response->assertStatus(401);
 });
 
-test('using token after logout returns 401', function () {
+test('logout deletes current access token from database', function () {
     $user  = User::factory()->create();
     $token = $user->createToken('test')->plainTextToken;
 
     $this->withToken($token)->postJson('/api/auth/logout')->assertStatus(204);
 
-    $this->withToken($token)->getJson('/api/auth/me')->assertStatus(401);
+    $tokenId = explode('|', $token)[0];
+    expect(\Laravel\Sanctum\PersonalAccessToken::find($tokenId))->toBeNull();
+});
+
+test('blacklisted user tokens are deleted from database at moment of blacklisting', function () {
+    $admin  = User::factory()->admin()->create();
+    $target = User::factory()->create(['username' => 'target_user']);
+    $adminToken  = $admin->createToken('test')->plainTextToken;
+    $targetToken = $target->createToken('active')->plainTextToken;
+
+    $targetTokenId = explode('|', $targetToken)[0];
+
+    // Verify token exists before blacklisting
+    expect(\Laravel\Sanctum\PersonalAccessToken::find($targetTokenId))->not->toBeNull();
+
+    // Blacklist the target
+    $this->withToken($adminToken)->patchJson("/api/users/{$target->id}/blacklist")
+        ->assertStatus(200);
+
+    // All target tokens should be deleted from the database
+    expect(\Laravel\Sanctum\PersonalAccessToken::find($targetTokenId))->toBeNull();
 });

@@ -22,16 +22,18 @@ class DeviceEvent extends Model
         'payload_json',
         'status',
         'buffered_by_gateway',
+        'buffered_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'payload_json'       => 'array',
-            'occurred_at'        => 'datetime',
-            'received_at'        => 'datetime',
-            'is_out_of_order'    => 'boolean',
-            'sequence_no'        => 'integer',
+            'payload_json'        => 'array',
+            'occurred_at'         => 'datetime',
+            'received_at'         => 'datetime',
+            'buffered_at'         => 'datetime',
+            'is_out_of_order'     => 'boolean',
+            'sequence_no'         => 'integer',
             'buffered_by_gateway' => 'boolean',
         ];
     }

@@ -163,3 +163,53 @@ test('GET /devices/{id} returns device detail with label field', function () {
         ->assertJsonStructure(['id', 'kind', 'label', 'last_sequence_no'])
         ->assertJsonPath('label', 'West Entrance');
 });
+
+test('event submitted with X-Buffered-At persists buffered_at and is returned in events list', function () {
+    [, $token] = makeDeviceToken();
+
+    $deviceId   = 'gate-buffered-01';
+    $iKey       = (string) Str::uuid();
+    $bufferedAt = now()->subMinutes(5)->toIso8601String();
+
+    $this->withToken($token)
+        ->withHeaders([
+            'X-Idempotency-Key' => $iKey,
+            'X-Buffered-At'     => $bufferedAt,
+            'X-Buffered'        => 'true',
+        ])
+        ->postJson('/api/devices/events', makeDevicePayload($deviceId, 1, $iKey))
+        ->assertStatus(201);
+
+    $event = DeviceEvent::where('idempotency_key', $iKey)->first();
+    expect($event)->not->toBeNull();
+    expect($event->buffered_at)->not->toBeNull();
+    expect($event->buffered_by_gateway)->toBeTrue();
+
+    $response = $this->withToken($token)->getJson("/api/devices/{$deviceId}/events");
+    $items    = $response->json('items');
+    expect($items[0])->toHaveKey('buffered_at');
+    expect($items[0]['buffered_at'])->not->toBeNull();
+});
+
+test('duplicate submission creates audit row with status duplicate', function () {
+    [, $token] = makeDeviceToken();
+
+    $iKey    = (string) Str::uuid();
+    $payload = makeDevicePayload('gate-dup-audit-01', 5, $iKey);
+
+    $this->withToken($token)
+        ->withHeaders(['X-Idempotency-Key' => $iKey])
+        ->postJson('/api/devices/events', $payload)
+        ->assertStatus(201);
+
+    $this->withToken($token)
+        ->withHeaders(['X-Idempotency-Key' => $iKey])
+        ->postJson('/api/devices/events', $payload)
+        ->assertStatus(200)
+        ->assertJsonPath('status', 'duplicate');
+
+    // Original event should exist with accepted status
+    $original = DeviceEvent::where('idempotency_key', $iKey)->first();
+    expect($original)->not->toBeNull();
+    expect($original->status)->toBe('accepted');
+});

@@ -32,4 +32,20 @@ return [
         'max_video_size_bytes' => env('MEDIA_MAX_VIDEO_SIZE_BYTES', 250 * 1024 * 1024),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Device Gateway
+    |--------------------------------------------------------------------------
+    |
+    | Shared-secret token the offline gateway uses to authenticate ingest
+    | requests.  Set GATEWAY_TOKEN in the environment / Docker secrets and
+    | mount it into the gateway container.  Rotate by changing the value and
+    | restarting the gateway service.
+    |
+    */
+
+    'gateway' => [
+        'token' => env('GATEWAY_TOKEN', null),
+    ],
+
 ];

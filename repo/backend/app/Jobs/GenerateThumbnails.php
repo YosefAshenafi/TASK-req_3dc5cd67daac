@@ -38,7 +38,7 @@ class GenerateThumbnails implements ShouldQueue
             return;
         }
 
-        $sourcePath = Storage::path($asset->file_path);
+        $sourcePath = Storage::disk('local')->path($asset->file_path);
 
         if (! file_exists($sourcePath)) {
             Log::error("GenerateThumbnails: Source file not found at {$sourcePath} for asset {$this->assetId}.");
@@ -46,17 +46,21 @@ class GenerateThumbnails implements ShouldQueue
             return;
         }
 
-        $thumbBaseDir = "media/thumbs/{$this->assetId}";
-        Storage::makeDirectory($thumbBaseDir);
+        $thumbnailPaths = [];
 
         foreach (self::WIDTHS as $width) {
             try {
-                $outPath = Storage::path("{$thumbBaseDir}/{$width}.jpg");
+                $thumbRelPath = "thumbs/{$this->assetId}/{$width}.jpg";
+                $outPath      = Storage::disk('public')->path($thumbRelPath);
+
+                @mkdir(dirname($outPath), 0755, true);
 
                 Image::read($sourcePath)
                     ->scaleDown($width)
                     ->toJpeg(85)
                     ->save($outPath);
+
+                $thumbnailPaths[(string) $width] = $thumbRelPath;
 
                 Log::info("GenerateThumbnails: Created {$width}px thumbnail for asset {$this->assetId}.");
             } catch (\Throwable $e) {
@@ -64,6 +68,11 @@ class GenerateThumbnails implements ShouldQueue
             }
         }
 
-        $asset->update(['status' => 'ready']);
+        $updates = ['status' => 'ready'];
+        if (! empty($thumbnailPaths)) {
+            $updates['thumbnail_urls'] = $thumbnailPaths;
+        }
+
+        $asset->update($updates);
     }
 }

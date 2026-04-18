@@ -6,7 +6,9 @@ import type {
   PlaylistShare,
   Favorite,
   PlayHistoryEntry,
+  PlayHistorySessionsResponse,
   RecommendationCandidate,
+  RecommendationsResponse,
   Device,
   DeviceEvent,
   ReplayAudit,
@@ -221,11 +223,13 @@ export const assetsApi = {
     cursor?: string
     limit?: number
     sort?: string
+    status?: 'ready' | 'processing' | 'failed' | 'all'
   }): Promise<PaginatedResponse<Asset>> => {
     const qs = new URLSearchParams()
     if (params?.cursor) qs.set('cursor', params.cursor)
     if (params?.limit) qs.set('limit', String(params.limit))
     if (params?.sort) qs.set('sort', params.sort)
+    if (params?.status) qs.set('status', params.status)
     return get<PaginatedResponse<Asset>>(`/assets?${qs}`)
   },
   get: (id: number): Promise<Asset> => get<Asset>(`/assets/${id}`),
@@ -235,7 +239,8 @@ export const assetsApi = {
     fd.append('file', file)
     fd.append('title', metadata.title)
     if (metadata.description) fd.append('description', metadata.description)
-    if (metadata.tags) fd.append('tags', metadata.tags.join(','))
+    // Laravel expects tags as an array — send one `tags[]` entry per tag.
+    if (metadata.tags) metadata.tags.forEach((t) => fd.append('tags[]', t))
     return post<Asset>('/assets', fd)
   },
 }
@@ -249,7 +254,10 @@ export const searchApi = {
   ): Promise<{ data: SearchResponse; degraded: boolean }> => {
     const qs = new URLSearchParams()
     if (params.q) qs.set('q', params.q)
-    if (params.tags?.length) params.tags.forEach((t) => qs.append('tags', t))
+    // Laravel parses repeated `tags[]` query params into an array. Plain `?tags=a&tags=b`
+    // would collapse to the last value only — use the bracketed form to match the
+    // server-side `(array) $request->input('tags')` contract in SearchController.
+    if (params.tags?.length) params.tags.forEach((t) => qs.append('tags[]', t))
     if (params.duration_lt != null)
       qs.set('duration_lt', String(params.duration_lt))
     if (params.recent_days != null) qs.set('recent_days', String(params.recent_days))
@@ -308,17 +316,29 @@ export const historyApi = {
     get<PaginatedResponse<PlayHistoryEntry>>(
       `/history${cursor ? `?cursor=${cursor}` : ''}`,
     ),
+  sessions: (limit?: number): Promise<PlayHistorySessionsResponse> =>
+    get<PlayHistorySessionsResponse>(
+      `/history/sessions${limit ? `?limit=${limit}` : ''}`,
+    ),
   record: (
     assetId: number,
-    context?: string,
+    payload?: { session_id?: string; context?: string },
   ): Promise<PlayHistoryEntry> =>
-    post<PlayHistoryEntry>(`/assets/${assetId}/play`, { context }),
+    post<PlayHistoryEntry>(`/assets/${assetId}/play`, payload ?? {}),
 }
 
 // ─── Recommendations ──────────────────────────────────────────────────────────
 
 export const recommendationsApi = {
-  get: (): Promise<RecommendationCandidate[]> => get<RecommendationCandidate[]>('/recommendations'),
+  get: async (): Promise<{ items: RecommendationCandidate[]; degraded: boolean }> => {
+    const { data, response } = await getWithResponse<RecommendationsResponse>(
+      '/recommendations',
+    )
+    const degraded =
+      response.headers.get('X-Recommendation-Degraded') === 'true' ||
+      data.degraded === true
+    return { items: data.items ?? [], degraded }
+  },
 }
 
 // ─── Devices ──────────────────────────────────────────────────────────────────

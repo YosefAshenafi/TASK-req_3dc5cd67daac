@@ -143,10 +143,7 @@ class UserController extends Controller
         $user->frozen_until = now()->addHours($request->input('duration_hours'));
         $user->save();
 
-        return response()->json([
-            'message'      => 'Account frozen.',
-            'frozen_until' => $user->frozen_until->toIso8601String(),
-        ]);
+        return response()->json($this->userResource($user));
     }
 
     /**
@@ -158,7 +155,7 @@ class UserController extends Controller
         $user->frozen_until = null;
         $user->save();
 
-        return response()->json(['message' => 'Account unfrozen.']);
+        return response()->json($this->userResource($user));
     }
 
     /**
@@ -170,7 +167,23 @@ class UserController extends Controller
         $user->blacklisted_at = now();
         $user->save();
 
-        return response()->json(['message' => 'Account blacklisted.']);
+        // Revoke all tokens immediately
+        $user->tokens()->delete();
+
+        return response()->json($this->userResource($user));
+    }
+
+    private function userResource(User $user): array
+    {
+        return [
+            'id'             => $user->id,
+            'username'       => $user->username,
+            'role'           => $user->role,
+            'frozen_until'   => $user->frozen_until?->toIso8601String(),
+            'blacklisted_at' => $user->blacklisted_at?->toIso8601String(),
+            'deleted_at'     => $user->deleted_at?->toIso8601String(),
+            'created_at'     => $user->created_at?->toIso8601String(),
+        ];
     }
 
     /**

@@ -4,7 +4,7 @@ Local-first, on-prem parking site media + device-ingestion platform.
 
 - **Stack:** Vue 3 + TypeScript (SPA) · Laravel / PHP 8.3 (API) · MySQL 8 · Redis 7 · Local disk (media)
 - **Runtime:** Everything in Docker Compose — no host-installed toolchains required.
-- **Docs:** see [`../docs/design.md`](../docs/design.md), [`../docs/api-specs.md`](../docs/api-specs.md), [`../docs/questions.md`](../docs/questions.md).
+- **Architecture:** see [`CLAUDE.md`](CLAUDE.md) for stack, data model, queues, circuit breaker, and device ingestion notes.
 - **Plan:** see [`PLAN.md`](PLAN.md) for phase-by-phase implementation with gates.
 
 ---
@@ -30,13 +30,25 @@ http://localhost:8090
 
 > **Note:** On the very first run, image builds and Composer installs take a few minutes. Subsequent starts are fast.
 
-### Default credentials
+### Default credentials (local / development only)
 
-| Role        | Username | Password   |
-|-------------|----------|------------|
-| Admin       | `admin`  | `password` |
-| Regular user | `user1` | `password` |
-| Technician  | `tech1`  | `password` |
+The seeder creates three demo accounts with the well-known password `password` **only**
+when `APP_ENV` is `local`, `development`, or `testing`. In any other environment the
+seeder skips account creation unless the operator sets `SEED_DEFAULT_ACCOUNTS=true`; in
+that case each account's password is taken from `ADMIN_BOOTSTRAP_PASSWORD`,
+`USER_BOOTSTRAP_PASSWORD`, `TECH_BOOTSTRAP_PASSWORD`, or falls back to a random 32-char
+string that is written to `storage/app/bootstrap-secrets/<username>.txt` (mode 0600) so
+the operator can read it out-of-band and rotate it via the admin console. Bootstrap
+passwords are never emitted to the application log.
+
+| Role         | Username | Password (local/dev only) |
+|--------------|----------|---------------------------|
+| Admin        | `admin`  | `password`                |
+| Regular user | `user1`  | `password`                |
+| Technician   | `tech1`  | `password`                |
+
+For production deployments, create accounts explicitly with `php artisan tinker` or an
+operator-run migration — never with the well-known password above.
 
 ### Database connection (host access)
 
@@ -154,12 +166,18 @@ repo/
 │   │   ├── my.cnf
 │   │   └── init/            ← SQL scripts run on first MySQL start
 │   └── secrets/
-├── backend/                 ← Laravel API
-├── frontend/                ← Vue 3 + TS SPA
+├── backend/                 ← Laravel API (executable tests live in `backend/tests/`)
+├── frontend/                ← Vue 3 + TS SPA (executable tests live in `frontend/src/tests/` and `frontend/e2e/`)
 ├── device-gateway/inbox/    ← file-drop for device events
-├── api-tests/               ← Pest HTTP tests
-├── unit-tests/              ← Pest + Vitest
-├── e2e-tests/               ← Playwright specs
+├── api-tests/               ← Guide only — see `backend/tests/Feature/` for the real Pest HTTP tests
+├── unit-tests/              ← Guide only — see `backend/tests/Unit/` and `frontend/src/tests/unit/` for real tests
+├── e2e-tests/               ← Guide only — see `frontend/e2e/` for the real Playwright specs
 └── scripts/
     └── check-phase.sh
 ```
+
+> **Heads up on test locations.** The top-level `api-tests/`, `unit-tests/`, and
+> `e2e-tests/` directories contain narrative guides and suite READMEs; they do **not**
+> hold the executable suites themselves. The actual tests run by `./run_tests.sh` and
+> CI live under `backend/tests/` (Pest) and `frontend/src/tests/` + `frontend/e2e/`
+> (Vitest + Playwright).

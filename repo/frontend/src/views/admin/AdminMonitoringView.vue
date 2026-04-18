@@ -153,6 +153,51 @@ async function handleResetFlag(flag: string) {
         </div>
       </div>
 
+      <!-- Content Usage Panel -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm sm:col-span-2">
+        <div class="flex items-end justify-between mb-4">
+          <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide">Content Usage</h2>
+          <span class="text-xs text-slate-400">last {{ status.content_usage?.window_hours ?? 24 }}h</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+          <div>
+            <p class="text-xs text-slate-500 uppercase tracking-wide">Plays</p>
+            <p class="text-xl font-bold text-slate-900 mt-0.5">{{ status.content_usage?.plays_24h ?? 0 }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 uppercase tracking-wide">Active users</p>
+            <p class="text-xl font-bold text-slate-900 mt-0.5">{{ status.content_usage?.active_users_24h ?? 0 }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 uppercase tracking-wide">Ready assets</p>
+            <p class="text-xl font-bold text-slate-900 mt-0.5">{{ status.content_usage?.total_ready_assets ?? 0 }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500 uppercase tracking-wide">Playlists</p>
+            <p class="text-xl font-bold text-slate-900 mt-0.5">{{ status.content_usage?.playlists_count ?? 0 }}</p>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-xs text-slate-500 uppercase tracking-wide mb-2">Top played</p>
+          <div v-if="!status.content_usage || status.content_usage.top_assets.length === 0" class="text-sm text-slate-400">
+            No plays in the last {{ status.content_usage?.window_hours ?? 24 }} hours.
+          </div>
+          <ol v-else class="space-y-1.5">
+            <li
+              v-for="(row, idx) in status.content_usage.top_assets"
+              :key="row.asset_id"
+              class="flex items-center gap-3 text-sm"
+            >
+              <span class="w-5 text-xs text-slate-400 text-right font-semibold">{{ idx + 1 }}.</span>
+              <span class="flex-1 truncate text-slate-800">{{ row.title ?? `Asset #${row.asset_id}` }}</span>
+              <span class="text-xs text-slate-400">{{ row.mime ?? '' }}</span>
+              <span class="text-sm font-semibold text-indigo-600 w-10 text-right">{{ row.play_count }}</span>
+            </li>
+          </ol>
+        </div>
+      </div>
+
       <!-- Feature Flags -->
       <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm sm:col-span-2">
         <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Feature Flags</h2>

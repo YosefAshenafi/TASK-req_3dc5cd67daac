@@ -1,4 +1,8 @@
-# End-to-End Tests
+# End-to-End Tests — Guide
+
+> This directory is a **guide / catalog**, not an executable suite. The actual Playwright
+> specs live at `frontend/e2e/`; running the `e2e-runner` Docker Compose service below is
+> what actually executes them.
 
 Browser-level tests using Playwright (TypeScript) with Chromium in two profiles:
 - **kiosk** — 1024×1366 tablet viewport, touch enabled

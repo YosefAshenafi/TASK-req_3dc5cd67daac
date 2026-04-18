@@ -21,6 +21,31 @@ test('search returns results matching query', function () {
         ->assertJsonStructure(['items', 'next_cursor', 'degraded']);
 });
 
+// Contract test: the frontend sends tags as repeated `tags[]=` query params (see
+// services/api.ts searchApi.search). Laravel parses the bracketed form into an array
+// while a plain `?tags=a&tags=b` would collapse to the last value only.
+test('search filters by tags when sent as tags[]=a&tags[]=b', function () {
+    $user  = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    $safety = Asset::factory()->create(['title' => 'Safety Reminder', 'status' => 'ready']);
+    $other  = Asset::factory()->create(['title' => 'Unrelated', 'status' => 'ready']);
+
+    SearchIndex::updateOrCreate(['asset_id' => $safety->id], ['tokenized_title' => 'safety reminder', 'tokenized_body' => '']);
+    SearchIndex::updateOrCreate(['asset_id' => $other->id],  ['tokenized_title' => 'unrelated',       'tokenized_body' => '']);
+
+    $safety->assetTags()->create(['tag' => 'safety']);
+    $safety->assetTags()->create(['tag' => 'overnight']);
+    $other->assetTags()->create(['tag' => 'gate']);
+
+    $response = $this->withToken($token)->getJson('/api/search?tags%5B%5D=safety&tags%5B%5D=overnight');
+
+    $response->assertStatus(200);
+    $ids = collect($response->json('items'))->pluck('id');
+    expect($ids)->toContain($safety->id);
+    expect($ids)->not->toContain($other->id);
+});
+
 test('search with duration filter excludes long assets', function () {
     $user  = User::factory()->create();
     $token = $user->createToken('test')->plainTextToken;
@@ -139,4 +164,59 @@ test('sort=newest returns most recently created assets first', function () {
     if ($newIndex !== false && $oldIndex !== false) {
         expect($newIndex)->toBeLessThan($oldIndex);
     }
+});
+
+test('cursor pagination on sort=newest does not skip or duplicate results', function () {
+    $user  = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    // Create 10 assets with staggered timestamps so sort=newest is deterministic.
+    $created = [];
+    for ($i = 0; $i < 10; $i++) {
+        $created[] = Asset::factory()->create([
+            'title'      => "Asset {$i}",
+            'status'     => 'ready',
+            'created_at' => now()->subMinutes(10 - $i), // older → newer
+        ]);
+    }
+
+    $first = $this->withToken($token)->getJson('/api/search?sort=newest&per_page=4');
+    $first->assertStatus(200);
+
+    $pageOneIds = collect($first->json('items'))->pluck('id')->toArray();
+    expect(count($pageOneIds))->toEqual(4);
+
+    $cursor = $first->json('next_cursor');
+    expect($cursor)->not->toBeNull();
+
+    $second = $this->withToken($token)->getJson("/api/search?sort=newest&per_page=4&cursor={$cursor}");
+    $second->assertStatus(200);
+
+    $pageTwoIds = collect($second->json('items'))->pluck('id')->toArray();
+
+    // Second page must not repeat anything from the first.
+    expect(array_intersect($pageOneIds, $pageTwoIds))->toBeEmpty();
+
+    // And must not skip ahead: every id on page 2 must have id < smallest id on page 1.
+    $minPageOne = min($pageOneIds);
+    foreach ($pageTwoIds as $id) {
+        expect($id)->toBeLessThan($minPageOne);
+    }
+});
+
+test('cursor pagination on sort=most_played advances in descending id order', function () {
+    $user  = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+
+    Asset::factory()->count(6)->create(['status' => 'ready']);
+
+    $first = $this->withToken($token)->getJson('/api/search?sort=most_played&per_page=3');
+    $pageOneIds = collect($first->json('items'))->pluck('id')->toArray();
+    $cursor = $first->json('next_cursor');
+    expect($cursor)->not->toBeNull();
+
+    $second = $this->withToken($token)->getJson("/api/search?sort=most_played&per_page=3&cursor={$cursor}");
+    $pageTwoIds = collect($second->json('items'))->pluck('id')->toArray();
+
+    expect(array_intersect($pageOneIds, $pageTwoIds))->toBeEmpty();
 });

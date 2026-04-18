@@ -4,13 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\FeatureFlag;
+use App\Services\Monitoring\MetricsRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class SearchController extends Controller
 {
+    public function __construct(private readonly MetricsRecorder $metrics) {}
+
     /**
      * GET /api/search
      *
@@ -25,7 +27,9 @@ class SearchController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $startMs      = (int) round(microtime(true) * 1000);
+        // Latency is recorded globally by App\Http\Middleware\RecordApiMetrics so every API
+        // request contributes to the monitoring dashboard's rolling p95 — we must not
+        // double-count this particular endpoint here.
         $sort         = $request->input('sort', 'newest');
         $originalSort = $sort;
         $perPage      = min((int) $request->input('per_page', 25), 100);
@@ -80,9 +84,11 @@ class SearchController extends Controller
             $query->where('assets.created_at', '>=', now()->subDays((int) $request->input('recent_days')));
         }
 
-        // Cursor pagination
+        // Cursor pagination — direction must match the active sort.
+        // All supported sorts order by `assets.id` descending as the tiebreaker, so
+        // the cursor advances with `id < cursor` (strictly older/lower ids).
         if ($request->filled('cursor')) {
-            $query->where('assets.id', '>', (int) $request->input('cursor'));
+            $query->where('assets.id', '<', (int) $request->input('cursor'));
         }
 
         // Apply sort
@@ -121,12 +127,12 @@ class SearchController extends Controller
         $items      = $items->take($perPage);
         $nextCursor = $hasMore ? $items->last()?->id : null;
 
-        // Track recommendation hit rate
+        // Track recommendation hit rate via MetricsRecorder
         if ($originalSort === 'recommended') {
-            Cache::increment('monitoring:recommendation_requests');
+            $this->metrics->incrementRecommendationRequests();
             $hits = $items->filter(fn ($a) => ! is_null(json_decode($a->reason_tags_json ?? 'null')))->count();
             if ($hits > 0) {
-                Cache::increment('monitoring:recommendation_hits');
+                $this->metrics->incrementRecommendationHits();
             }
         }
 
@@ -148,17 +154,6 @@ class SearchController extends Controller
 
         if ($degraded) {
             $response->header('X-Recommendation-Degraded', 'true');
-        }
-
-        // Record latency to Redis rolling window
-        $latencyMs     = (int) round(microtime(true) * 1000) - $startMs;
-        $windowSeconds = config('smartpark.latency_window_minutes', 5) * 60;
-        $now           = time();
-        try {
-            Cache::getRedis()->zAdd('monitoring:latency_samples', $now, "{$now}:{$latencyMs}");
-            Cache::getRedis()->zRemRangeByScore('monitoring:latency_samples', '-inf', $now - $windowSeconds);
-        } catch (\Throwable) {
-            // Redis unavailable — don't break the search response
         }
 
         return $response;

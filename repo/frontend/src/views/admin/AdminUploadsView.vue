@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, onMounted } from 'vue'
 import type { Asset } from '@/types/api'
 import { useUiStore } from '@/stores/ui'
-import { ApiError, getStoredToken } from '@/services/api'
+import { ApiError, getStoredToken, assetsApi } from '@/services/api'
 
 const uiStore = useUiStore()
 
@@ -20,6 +20,43 @@ interface UploadEntry {
 
 const entries = ref<UploadEntry[]>([])
 const isDragOver = ref(false)
+
+// Review queue — assets still in processing / failed so admins can audit the pipeline.
+type ReviewTab = 'processing' | 'failed' | 'ready'
+const reviewTab = ref<ReviewTab>('processing')
+const reviewAssets = ref<Asset[]>([])
+const reviewLoading = ref(false)
+
+async function loadReview(tab: ReviewTab = reviewTab.value) {
+  reviewTab.value = tab
+  reviewLoading.value = true
+  try {
+    const page = await assetsApi.list({ status: tab, limit: 25, sort: 'newest' })
+    reviewAssets.value = page.items
+  } catch (err) {
+    uiStore.addNotification({
+      type: 'error',
+      message: err instanceof Error ? err.message : 'Failed to load review queue',
+    })
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
+onMounted(() => loadReview('processing'))
+
+function statusBadgeClass(status: string): string {
+  switch (status) {
+    case 'ready':
+      return 'bg-emerald-100 text-emerald-700'
+    case 'processing':
+      return 'bg-indigo-100 text-indigo-700'
+    case 'failed':
+      return 'bg-red-100 text-red-700'
+    default:
+      return 'bg-slate-100 text-slate-600'
+  }
+}
 
 function createEntry(file: File): UploadEntry {
   return {
@@ -48,7 +85,13 @@ function handleFileInput(e: Event) {
 }
 
 function addFiles(files: File[]) {
-  const valid = files.filter((f) => f.type.startsWith('video/') || f.type.startsWith('audio/') || f.type.startsWith('image/'))
+  // Allowlist must match backend MediaValidator: JPEG/PNG/PDF/MP3/MP4.
+  const valid = files.filter((f) =>
+    f.type.startsWith('video/') ||
+    f.type.startsWith('audio/') ||
+    f.type.startsWith('image/') ||
+    f.type === 'application/pdf'
+  )
   if (valid.length < files.length) {
     uiStore.addNotification({ type: 'warning', message: 'Some files were skipped (unsupported type)' })
   }
@@ -69,7 +112,8 @@ async function uploadEntry(entry: UploadEntry) {
   fd.append('title', entry.title.trim() || entry.file.name)
   if (entry.description.trim()) fd.append('description', entry.description.trim())
   if (entry.tags.trim()) {
-    entry.tags.split(',').map((t) => t.trim()).filter(Boolean).forEach((t) => fd.append('tags', t))
+    // Laravel's array validation accepts `tags[]` repeated multipart fields; send that form.
+    entry.tags.split(',').map((t) => t.trim()).filter(Boolean).forEach((t) => fd.append('tags[]', t))
   }
 
   try {
@@ -173,9 +217,9 @@ function formatSize(bytes: number): string {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
         Browse Files
-        <input type="file" multiple accept="video/*,audio/*,image/*" class="hidden" @change="handleFileInput" />
+        <input type="file" multiple accept="image/jpeg,image/png,application/pdf,audio/mpeg,video/mp4" class="hidden" @change="handleFileInput" />
       </label>
-      <p class="text-xs text-slate-400 mt-4">Supports video, audio, and image files</p>
+      <p class="text-xs text-slate-400 mt-4">Supports JPEG, PNG, PDF, MP3, and MP4 (25 MB images/docs, 250 MB video)</p>
     </div>
 
     <!-- Upload all -->
@@ -269,5 +313,59 @@ function formatSize(bytes: number): string {
         </div>
       </div>
     </div>
+
+    <!-- Upload review queue -->
+    <section class="mt-10">
+      <div class="flex items-end justify-between mb-3">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-900">Review queue</h2>
+          <p class="text-sm text-slate-500 mt-0.5">Assets still being processed, or that failed validation, for admin review.</p>
+        </div>
+        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+          <button
+            v-for="tab in (['processing', 'failed', 'ready'] as const)"
+            :key="tab"
+            @click="loadReview(tab)"
+            :class="[
+              'px-3 py-1.5 text-xs font-semibold rounded-lg capitalize transition-colors',
+              reviewTab === tab
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700',
+            ]"
+          >{{ tab }}</button>
+        </div>
+      </div>
+
+      <div v-if="reviewLoading" class="space-y-2">
+        <div v-for="n in 3" :key="n" class="h-16 bg-white border border-slate-200 rounded-xl animate-pulse" />
+      </div>
+
+      <div v-else-if="reviewAssets.length === 0" class="bg-white border border-slate-200 rounded-2xl px-4 py-10 text-center">
+        <p class="text-sm font-semibold text-slate-700 mb-1">Nothing in the {{ reviewTab }} queue</p>
+        <p class="text-xs text-slate-400">Upload an asset above to see it flow through the review pipeline.</p>
+      </div>
+
+      <ul v-else class="space-y-2">
+        <li
+          v-for="asset in reviewAssets"
+          :key="asset.id"
+          class="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-4"
+        >
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-slate-800 truncate">{{ asset.title }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+              <span>#{{ asset.id }}</span>
+              <span class="mx-2">·</span>
+              <span>{{ asset.mime }}</span>
+              <span class="mx-2">·</span>
+              <span>{{ formatSize(asset.size_bytes) }}</span>
+            </p>
+          </div>
+          <span :class="['text-xs font-semibold px-2.5 py-1 rounded-full capitalize', statusBadgeClass(asset.status)]">
+            {{ asset.status }}
+          </span>
+        </li>
+      </ul>
+    </section>
   </div>
 </template>

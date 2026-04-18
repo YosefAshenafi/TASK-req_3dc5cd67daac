@@ -6,7 +6,7 @@ use App\Models\ReplayAudit;
 use App\Models\User;
 use Illuminate\Support\Str;
 
-test('replay creates an audit record', function () {
+test('replay creates an audit record and returns full ReplayAudit resource', function () {
     $tech  = User::factory()->technician()->create();
     $token = $tech->createToken('test')->plainTextToken;
 
@@ -18,7 +18,11 @@ test('replay creates an audit record', function () {
         'reason'            => 'LAN outage',
     ]);
 
-    $response->assertStatus(202);
+    $response->assertStatus(201)
+        ->assertJsonStructure(['id', 'device_id', 'initiated_by', 'since_sequence_no', 'until_sequence_no', 'reason', 'created_at'])
+        ->assertJsonPath('device_id', 'gate-replay-01')
+        ->assertJsonPath('since_sequence_no', 1)
+        ->assertJsonPath('reason', 'LAN outage');
 
     $audit = ReplayAudit::where('device_id', 'gate-replay-01')->first();
     expect($audit)->not->toBeNull();

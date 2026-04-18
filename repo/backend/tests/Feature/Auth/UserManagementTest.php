@@ -28,7 +28,9 @@ test('admin can freeze a user', function () {
     ]);
 
     $response->assertStatus(200)
-        ->assertJsonStructure(['message', 'frozen_until']);
+        ->assertJsonStructure(['id', 'username', 'role', 'frozen_until']);
+
+    expect($response->json('frozen_until'))->not->toBeNull();
 
     $user->refresh();
     expect($user->frozen_until)->not->toBeNull();

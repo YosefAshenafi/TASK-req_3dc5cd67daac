@@ -108,7 +108,7 @@ test('DELETE /playlists/{id}/items/{itemId} removes item and returns 204', funct
     expect(PlaylistItem::find($item->id))->toBeNull();
 });
 
-test('PUT /playlists/{id}/items/order reorders items and returns 200', function () {
+test('PUT /playlists/{id}/items/order reorders items using item_ids array order', function () {
     $user     = User::factory()->create();
     $token    = $user->createToken('test')->plainTextToken;
     $playlist = Playlist::factory()->create(['owner_id' => $user->id]);
@@ -117,11 +117,9 @@ test('PUT /playlists/{id}/items/order reorders items and returns 200', function 
     $item1    = PlaylistItem::create(['playlist_id' => $playlist->id, 'asset_id' => $asset1->id, 'position' => 1]);
     $item2    = PlaylistItem::create(['playlist_id' => $playlist->id, 'asset_id' => $asset2->id, 'position' => 2]);
 
+    // Send item2 first, item1 second → item2 gets position 1, item1 gets position 2
     $response = $this->withToken($token)->putJson("/api/playlists/{$playlist->id}/items/order", [
-        'items' => [
-            ['id' => $item1->id, 'position' => 2],
-            ['id' => $item2->id, 'position' => 1],
-        ],
+        'item_ids' => [$item2->id, $item1->id],
     ]);
 
     $response->assertStatus(200);
@@ -143,6 +141,6 @@ test('non-owner gets 403 on playlist item endpoints', function () {
     $this->withToken($token)->deleteJson("/api/playlists/{$playlist->id}/items/{$item->id}")
         ->assertStatus(403);
 
-    $this->withToken($token)->putJson("/api/playlists/{$playlist->id}/items/order", ['items' => []])
+    $this->withToken($token)->putJson("/api/playlists/{$playlist->id}/items/order", ['item_ids' => []])
         ->assertStatus(403);
 });

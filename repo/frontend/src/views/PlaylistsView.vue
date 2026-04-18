@@ -177,7 +177,8 @@ function handleShareRevoked() {
           >
             <p class="font-semibold text-slate-900 truncate">{{ pl.name }}</p>
             <p class="text-xs text-slate-400 mt-0.5">
-              {{ pl.items?.length ?? 0 }} {{ (pl.items?.length ?? 0) === 1 ? 'item' : 'items' }}
+              {{ pl.items_count ?? pl.items?.length ?? 0 }}
+              {{ (pl.items_count ?? pl.items?.length ?? 0) === 1 ? 'item' : 'items' }}
             </p>
           </button>
 

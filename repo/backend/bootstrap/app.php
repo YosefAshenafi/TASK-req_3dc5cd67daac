@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
+
+        // Record latency + status for every API request so /monitoring/status can
+        // report a real error_rate_5m instead of a hard-coded 0.
+        $middleware->api(prepend: [
+            \App\Http\Middleware\RecordApiMetrics::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

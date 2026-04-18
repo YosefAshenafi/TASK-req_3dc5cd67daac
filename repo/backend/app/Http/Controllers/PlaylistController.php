@@ -16,6 +16,9 @@ class PlaylistController extends Controller
 
     /**
      * GET /api/playlists - List user's playlists.
+     *
+     * Returns `items_count` explicitly so the frontend does not need to load
+     * every playlist item just to render a count in the list view.
      */
     public function index(Request $request): JsonResponse
     {
@@ -23,7 +26,14 @@ class PlaylistController extends Controller
             ->withCount('items')
             ->get();
 
-        return response()->json($playlists);
+        return response()->json($playlists->map(fn ($pl) => [
+            'id'          => $pl->id,
+            'owner_id'    => $pl->owner_id,
+            'name'        => $pl->name,
+            'items_count' => (int) ($pl->items_count ?? 0),
+            'created_at'  => $pl->created_at?->toIso8601String(),
+            'updated_at'  => $pl->updated_at?->toIso8601String(),
+        ]));
     }
 
     /**
@@ -50,6 +60,10 @@ class PlaylistController extends Controller
 
     /**
      * GET /api/playlists/{id} - Get a playlist with its items.
+     *
+     * Items that reference a non-ready asset have their title/MIME scrubbed for non-admin
+     * callers, and their status is collapsed to `unavailable` — the id stays so the UI
+     * can render a placeholder row without leaking the real asset metadata.
      */
     public function show(Request $request, string $id): JsonResponse
     {
@@ -59,22 +73,38 @@ class PlaylistController extends Controller
             })
             ->findOrFail($id);
 
+        $isAdmin = $request->user()?->role === 'admin';
+
         return response()->json([
             'id'         => $playlist->id,
             'name'       => $playlist->name,
             'owner_id'   => $playlist->owner_id,
             'created_at' => $playlist->created_at?->toIso8601String(),
-            'items'      => $playlist->items->map(fn ($item) => [
-                'id'       => $item->id,
-                'position' => $item->position,
-                'asset_id' => $item->asset_id,
-                'asset'    => $item->asset ? [
-                    'id'     => $item->asset->id,
-                    'title'  => $item->asset->title,
-                    'mime'   => $item->asset->mime,
-                    'status' => $item->asset->status,
-                ] : null,
-            ]),
+            'items'      => $playlist->items->map(function ($item) use ($isAdmin) {
+                if (! $item->asset) {
+                    return [
+                        'id'       => $item->id,
+                        'position' => $item->position,
+                        'asset_id' => $item->asset_id,
+                        'asset'    => null,
+                    ];
+                }
+
+                $isReady    = $item->asset->status === 'ready';
+                $exposeMeta = $isAdmin || $isReady;
+
+                return [
+                    'id'       => $item->id,
+                    'position' => $item->position,
+                    'asset_id' => $item->asset_id,
+                    'asset'    => [
+                        'id'     => $item->asset->id,
+                        'title'  => $exposeMeta ? $item->asset->title : null,
+                        'mime'   => $exposeMeta ? $item->asset->mime  : null,
+                        'status' => $isAdmin ? $item->asset->status   : ($isReady ? 'ready' : 'unavailable'),
+                    ],
+                ];
+            }),
         ]);
     }
 
@@ -195,7 +225,7 @@ class PlaylistController extends Controller
 
         // Check owner eligibility
         $owner = $originalPlaylist->owner;
-        if (! $owner || $owner->trashed() || in_array($owner->status, ['blacklisted', 'frozen'])) {
+        if (! $owner || $owner->trashed() || $owner->blacklisted_at !== null || ($owner->frozen_until !== null && $owner->frozen_until->isFuture())) {
             return response()->json(['message' => 'Playlist owner is not eligible for sharing.'], 403);
         }
 
@@ -226,6 +256,10 @@ class PlaylistController extends Controller
 
     /**
      * POST /api/playlists/{id}/items - Add an item to a playlist.
+     *
+     * The referenced asset must exist AND be in status='ready' for non-admin callers.
+     * Silently letting any integer through to the DB would let users put unpublished or
+     * non-existent asset ids into a playlist and have the UI echo them back.
      */
     public function addItem(Request $request, string $id): JsonResponse
     {
@@ -238,11 +272,27 @@ class PlaylistController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
+        $asset = \App\Models\Asset::find($request->input('asset_id'));
+        if (! $asset) {
+            return response()->json([
+                'message'     => 'Asset not found.',
+                'reason_code' => 'asset_not_found',
+            ], 404);
+        }
+
+        $isAdmin = $request->user()->role === 'admin';
+        if (! $isAdmin && $asset->status !== 'ready') {
+            return response()->json([
+                'message'     => 'Asset is not available.',
+                'reason_code' => 'asset_not_ready',
+            ], 422);
+        }
+
         $position = ($playlist->items()->max('position') ?? 0) + 1;
 
         $item = PlaylistItem::create([
             'playlist_id' => $playlist->id,
-            'asset_id'    => $request->input('asset_id'),
+            'asset_id'    => $asset->id,
             'position'    => $position,
         ]);
 
@@ -279,24 +329,24 @@ class PlaylistController extends Controller
 
     /**
      * PUT /api/playlists/{id}/items/order - Reorder items in a playlist.
+     * Accepts { item_ids: number[] } — position derived from array order.
      */
     public function reorderItems(Request $request, string $id): JsonResponse
     {
-        $request->validate([
-            'items'             => ['required', 'array'],
-            'items.*.id'        => ['required', 'integer'],
-            'items.*.position'  => ['required', 'integer'],
-        ]);
-
         $playlist = Playlist::findOrFail($id);
         if ($playlist->owner_id !== $request->user()->id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        foreach ($request->input('items') as $entry) {
-            PlaylistItem::where('id', $entry['id'])
+        $request->validate([
+            'item_ids'   => ['required', 'array'],
+            'item_ids.*' => ['integer'],
+        ]);
+
+        foreach ($request->input('item_ids') as $position => $itemId) {
+            PlaylistItem::where('id', $itemId)
                 ->where('playlist_id', $playlist->id)
-                ->update(['position' => $entry['position']]);
+                ->update(['position' => $position + 1]);
         }
 
         $updated = PlaylistItem::where('playlist_id', $playlist->id)

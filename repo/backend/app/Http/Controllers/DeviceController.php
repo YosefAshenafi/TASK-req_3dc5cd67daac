@@ -17,7 +17,13 @@ class DeviceController extends Controller
     /**
      * POST /api/devices/events - Ingest a device event.
      *
-     * Required headers: X-Idempotency-Key (UUID)
+     * Required headers: X-Idempotency-Key (UUID).
+     *
+     * Dedup is scoped to the last 7 days: the same (device_id, idempotency_key) reappearing
+     * after the 7-day window is allowed as a new event. Sequence handling flags both
+     * regressions (seq <= last_sequence_no) and forward gaps (seq > last_sequence_no + 1)
+     * as `out_of_order`; the reconciliation job advances `last_sequence_no` to the highest
+     * contiguous value once the missing event(s) arrive.
      */
     public function ingestEvent(Request $request): JsonResponse
     {
@@ -36,19 +42,91 @@ class DeviceController extends Controller
         ]);
 
         $occurredAt = \Carbon\Carbon::parse($request->input('occurred_at'));
-
-        // Check if event is too old (> 7 days)
-        if ($occurredAt->isBefore(now()->subDays(7))) {
-            return response()->json([
-                'message' => 'Event is too old and will not be accepted.',
-                'status'  => 'too_old',
-            ], 410);
-        }
-
+        $windowStart = now()->subDays(7);
         $deviceId   = $request->input('device_id');
         $sequenceNo = (int) $request->input('sequence_no');
 
-        // Ensure device exists (upsert)
+        $bufferedAt = null;
+        if ($request->header('X-Buffered-At')) {
+            try {
+                $bufferedAt = \Carbon\Carbon::parse($request->header('X-Buffered-At'));
+            } catch (\Throwable) {
+                $bufferedAt = null;
+            }
+        }
+
+        // Too-old: occurred_at older than the 7-day acceptance window.
+        // Persist the attempt as an audit row so technicians can review rejected inflows
+        // instead of silently dropping them.
+        if ($occurredAt->isBefore($windowStart)) {
+            Device::firstOrCreate(
+                ['id' => $deviceId],
+                [
+                    'kind'             => $request->input('device_kind', 'unknown'),
+                    'label'            => $request->input('device_label'),
+                    'last_sequence_no' => 0,
+                    'last_seen_at'     => now(),
+                ]
+            );
+
+            $auditEvent = DeviceEvent::create([
+                'device_id'           => $deviceId,
+                'event_type'          => $request->input('event_type'),
+                'sequence_no'         => $sequenceNo,
+                'idempotency_key'     => $idempotencyKey,
+                'occurred_at'         => $occurredAt,
+                'received_at'         => now(),
+                'is_out_of_order'     => false,
+                'payload_json'        => $request->input('payload'),
+                'status'              => 'too_old',
+                'buffered_by_gateway' => $request->header('X-Buffered') === 'true',
+                'buffered_at'         => $bufferedAt,
+            ]);
+
+            return response()->json([
+                'message'  => 'Event is too old and will not be accepted.',
+                'status'   => 'too_old',
+                'event_id' => $auditEvent->id,
+            ], 410);
+        }
+
+        // Dedup: only within the 7-day window. After the window expires the same
+        // idempotency_key may be reused (replays without double-applying side effects).
+        // We only treat `accepted`/`out_of_order` originals as duplicate sources — audit
+        // rows (status IN ('duplicate','too_old')) must not cascade into further matches.
+        $windowDuplicate = DeviceEvent::where('device_id', $deviceId)
+            ->where('idempotency_key', $idempotencyKey)
+            ->where('occurred_at', '>=', $windowStart)
+            ->whereIn('status', ['accepted', 'out_of_order'])
+            ->first();
+
+        if ($windowDuplicate) {
+            // Persist the duplicate attempt as an audit row so the device console can show
+            // every retry the gateway (or a misbehaving device) sent after the original.
+            $auditEvent = DeviceEvent::create([
+                'device_id'           => $deviceId,
+                'event_type'          => $request->input('event_type'),
+                'sequence_no'         => $sequenceNo,
+                'idempotency_key'     => $idempotencyKey,
+                'occurred_at'         => $occurredAt,
+                'received_at'         => now(),
+                'is_out_of_order'     => false,
+                'payload_json'        => $request->input('payload'),
+                'status'              => 'duplicate',
+                'buffered_by_gateway' => $request->header('X-Buffered') === 'true',
+                'buffered_at'         => $bufferedAt,
+            ]);
+
+            return response()->json([
+                'status'            => 'duplicate',
+                'message'           => 'Event already processed.',
+                'event_id'          => $windowDuplicate->id,
+                'audit_event_id'    => $auditEvent->id,
+                'original_event_id' => $windowDuplicate->id,
+            ], 200);
+        }
+
+        // Ensure device exists (upsert).
         $device = Device::firstOrCreate(
             ['id' => $deviceId],
             [
@@ -59,48 +137,38 @@ class DeviceController extends Controller
             ]
         );
 
-        // Try to insert the event; catch duplicate
+        // Out-of-order covers both sequence regressions AND forward gaps against the
+        // per-device monotonic counter. An event exactly one ahead of last_sequence_no is
+        // in-order; anything else is queued for reconciliation.
+        //
+        // First event ever for a device (row just inserted OR no events yet recorded) is
+        // treated as the starting point — we don't know where the device's counter "should"
+        // be, so we accept whatever it sends and adopt that value as the new baseline.
+        $isFirstEvent      = $device->wasRecentlyCreated
+            || ((int) $device->last_sequence_no === 0
+                && ! DeviceEvent::where('device_id', $deviceId)->exists());
+        $expectedNext      = (int) $device->last_sequence_no + 1;
+        $isSequenceRegress = ! $isFirstEvent && $sequenceNo <= (int) $device->last_sequence_no;
+        $isForwardGap      = ! $isFirstEvent && $sequenceNo > $expectedNext;
+        $isOutOfOrder      = $isSequenceRegress || $isForwardGap;
+
         try {
-            $isOutOfOrder = $sequenceNo <= $device->last_sequence_no;
-
             $event = DeviceEvent::create([
-                'device_id'          => $deviceId,
-                'event_type'         => $request->input('event_type'),
-                'sequence_no'        => $sequenceNo,
-                'idempotency_key'    => $idempotencyKey,
-                'occurred_at'        => $occurredAt,
-                'received_at'        => now(),
-                'is_out_of_order'    => $isOutOfOrder,
-                'payload_json'       => $request->input('payload'),
-                'status'             => $isOutOfOrder ? 'out_of_order' : 'accepted',
+                'device_id'           => $deviceId,
+                'event_type'          => $request->input('event_type'),
+                'sequence_no'         => $sequenceNo,
+                'idempotency_key'     => $idempotencyKey,
+                'occurred_at'         => $occurredAt,
+                'received_at'         => now(),
+                'is_out_of_order'     => $isOutOfOrder,
+                'payload_json'        => $request->input('payload'),
+                'status'              => $isOutOfOrder ? 'out_of_order' : 'accepted',
                 'buffered_by_gateway' => $request->header('X-Buffered') === 'true',
+                'buffered_at'         => $bufferedAt,
             ]);
-
-            if ($isOutOfOrder) {
-                // Dispatch reconciliation job
-                ReconcileDeviceEvents::dispatch($deviceId);
-
-                return response()->json([
-                    'status'     => 'out_of_order',
-                    'message'    => 'Event accepted but is out of order. Reconciliation dispatched.',
-                    'event_id'   => $event->id,
-                ], 202);
-            }
-
-            // Update device last seen and sequence
-            DB::table('devices')
-                ->where('id', $deviceId)
-                ->update([
-                    'last_sequence_no' => $sequenceNo,
-                    'last_seen_at'     => now(),
-                ]);
-
-            return response()->json([
-                'status'   => 'accepted',
-                'event_id' => $event->id,
-            ], 201);
-
-        } catch (UniqueConstraintViolationException $e) {
+        } catch (UniqueConstraintViolationException) {
+            // Lost-race dedup fallback for pre-migration rows that still carry the legacy
+            // (device_id, idempotency_key) unique index — treat as duplicate-within-window.
             return response()->json([
                 'status'  => 'duplicate',
                 'message' => 'Event already processed.',
@@ -110,21 +178,36 @@ class DeviceController extends Controller
                 'device_id'       => $deviceId,
                 'idempotency_key' => $idempotencyKey,
             ]);
-
-            // If not a unique violation, check if it's actually a duplicate
-            $existing = DeviceEvent::where('device_id', $deviceId)
-                ->where('idempotency_key', $idempotencyKey)
-                ->first();
-
-            if ($existing) {
-                return response()->json([
-                    'status'  => 'duplicate',
-                    'message' => 'Event already processed.',
-                ], 200);
-            }
-
             return response()->json(['message' => 'Failed to ingest event.'], 500);
         }
+
+        if ($isOutOfOrder) {
+            ReconcileDeviceEvents::dispatch($deviceId);
+
+            $reason = $isSequenceRegress
+                ? 'sequence regression'
+                : "forward gap (expected {$expectedNext}, got {$sequenceNo})";
+
+            return response()->json([
+                'status'        => 'out_of_order',
+                'message'       => "Event accepted but is out of order: {$reason}. Reconciliation dispatched.",
+                'event_id'      => $event->id,
+                'expected_next' => $expectedNext,
+            ], 202);
+        }
+
+        // Happy path: advance the per-device monotonic counter.
+        DB::table('devices')
+            ->where('id', $deviceId)
+            ->update([
+                'last_sequence_no' => $sequenceNo,
+                'last_seen_at'     => now(),
+            ]);
+
+        return response()->json([
+            'status'   => 'accepted',
+            'event_id' => $event->id,
+        ], 201);
     }
 
     /**
@@ -162,6 +245,11 @@ class DeviceController extends Controller
 
     /**
      * GET /api/devices/{id}/events - Audit trail for a device.
+     *
+     * Query params:
+     *   status  - optional filter: accepted | duplicate | out_of_order | too_old
+     *   cursor  - paginate by event id (descending)
+     *   limit   - results per page (default 50, max 200)
      */
     public function events(Request $request, string $id): JsonResponse
     {
@@ -169,8 +257,23 @@ class DeviceController extends Controller
 
         $perPage = min((int) $request->input('limit', 50), 200);
 
-        $events = DeviceEvent::where('device_id', $device->id)
-            ->orderByDesc('occurred_at')
+        $query = DeviceEvent::where('device_id', $device->id);
+
+        if ($request->filled('status')) {
+            $status = $request->input('status');
+            $allowed = ['accepted', 'duplicate', 'out_of_order', 'too_old'];
+            if (in_array($status, $allowed, true)) {
+                $query->where('status', $status);
+            }
+        }
+
+        // Cursor is the id of the last event on the prior page; we order by id desc,
+        // so the next page is strictly lower ids.
+        if ($request->filled('cursor')) {
+            $query->where('id', '<', (int) $request->input('cursor'));
+        }
+
+        $events = $query->orderByDesc('id')
             ->limit($perPage + 1)
             ->get();
 
@@ -180,15 +283,18 @@ class DeviceController extends Controller
 
         return response()->json([
             'items' => $events->map(fn ($e) => [
-                'id'              => $e->id,
-                'device_id'       => $e->device_id,
-                'idempotency_key' => $e->idempotency_key,
-                'sequence_no'     => $e->sequence_no,
-                'event_type'      => $e->event_type,
-                'status'          => $e->status,
-                'is_out_of_order' => (bool) $e->is_out_of_order,
-                'occurred_at'     => $e->occurred_at?->toIso8601String(),
-                'received_at'     => $e->received_at?->toIso8601String(),
+                'id'                  => $e->id,
+                'device_id'           => $e->device_id,
+                'idempotency_key'     => $e->idempotency_key,
+                'sequence_no'         => $e->sequence_no,
+                'event_type'          => $e->event_type,
+                'status'              => $e->status,
+                'is_out_of_order'     => (bool) $e->is_out_of_order,
+                'buffered_by_gateway' => (bool) $e->buffered_by_gateway,
+                'buffered_at'         => $e->buffered_at?->toIso8601String(),
+                'occurred_at'         => $e->occurred_at?->toIso8601String(),
+                'received_at'         => $e->received_at?->toIso8601String(),
+                'payload_json'        => $e->payload_json,
             ]),
             'next_cursor' => $nextCursor,
         ]);
@@ -238,8 +344,13 @@ class DeviceController extends Controller
         ]);
 
         return response()->json([
-            'message'   => 'Replay audit created.',
-            'audit_id'  => $audit->id,
-        ], 202);
+            'id'                => $audit->id,
+            'device_id'         => $audit->device_id,
+            'initiated_by'      => $audit->initiated_by,
+            'since_sequence_no' => $audit->since_sequence_no,
+            'until_sequence_no' => $audit->until_sequence_no,
+            'reason'            => $audit->reason,
+            'created_at'        => $audit->created_at?->toIso8601String(),
+        ], 201);
     }
 }

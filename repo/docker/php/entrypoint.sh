@@ -24,11 +24,34 @@ if [ "$1" = "php-fpm" ]; then
     echo "[entrypoint] Running database migrations..."
     php artisan migrate --force
 
-    # Seed default accounts and feature flags (skip in test environment)
-    if [ "${APP_ENV:-local}" != "testing" ]; then
-        echo "[entrypoint] Seeding default data..."
-        php artisan db:seed --force
-    fi
+    # Default-account seeding is gated by environment. In local/development/testing the
+    # seeder creates the documented demo accounts; in any other environment the seeder
+    # no-ops unless SEED_DEFAULT_ACCOUNTS=true is explicitly set. Feature flags are seeded
+    # unconditionally because they are non-credential config rows.
+    APP_ENV_LOWER="$(echo "${APP_ENV:-local}" | tr '[:upper:]' '[:lower:]')"
+    case "$APP_ENV_LOWER" in
+        local|development)
+            echo "[entrypoint] Seeding default data (env=${APP_ENV_LOWER})..."
+            php artisan db:seed --force
+            ;;
+        testing)
+            # Tests run their own RefreshDatabase + factories; skip the global seed.
+            echo "[entrypoint] Skipping seed in testing env."
+            ;;
+        *)
+            # DatabaseSeeder::shouldSeedAccounts() short-circuits unless
+            # SEED_DEFAULT_ACCOUNTS=true, so it is safe to always invoke: in production it
+            # creates feature flags and skips accounts unless the operator opts in.
+            if [ "${SEED_DEFAULT_ACCOUNTS:-false}" = "true" ]; then
+                echo "[entrypoint] SEED_DEFAULT_ACCOUNTS=true; running full seed in env=${APP_ENV_LOWER}."
+            else
+                echo "[entrypoint] Seeding feature flags only in env=${APP_ENV_LOWER}."
+                echo "[entrypoint] Set SEED_DEFAULT_ACCOUNTS=true and ADMIN_BOOTSTRAP_PASSWORD "
+                echo "[entrypoint] (plus USER_/TECH_BOOTSTRAP_PASSWORD) to seed accounts safely."
+            fi
+            php artisan db:seed --force
+            ;;
+    esac
 
 fi
 

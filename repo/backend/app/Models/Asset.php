@@ -21,6 +21,7 @@ class Asset extends Model
         'size_bytes',
         'file_path',
         'fingerprint_sha256',
+        'thumbnail_urls',
         'status',
         'uploaded_by',
     ];
@@ -30,6 +31,7 @@ class Asset extends Model
         return [
             'size_bytes'       => 'integer',
             'duration_seconds' => 'integer',
+            'thumbnail_urls'   => 'array',
         ];
     }
 

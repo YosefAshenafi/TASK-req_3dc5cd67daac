@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { usePlayerStore } from '@/stores/player'
 import { historyApi } from '@/services/api'
-import { Music2, Clock, Sparkles } from 'lucide-vue-next'
+import { Music2, Clock, Sparkles, ListMusic } from 'lucide-vue-next'
+import type { PlayHistorySession } from '@/types/api'
 
 const playerStore = usePlayerStore()
+const sessions = ref<PlayHistorySession[]>([])
+const sessionsLoading = ref(true)
 
 onMounted(async () => {
   try {
@@ -13,7 +16,23 @@ onMounted(async () => {
   } catch {
     // ignore
   }
+
+  try {
+    const res = await historyApi.sessions(10)
+    sessions.value = res.sessions
+  } catch {
+    // ignore
+  } finally {
+    sessionsLoading.value = false
+  }
 })
+
+function sessionLabel(session: PlayHistorySession, idx: number): string {
+  if (session.session_id) {
+    return `Session ${session.session_id.slice(0, 8)}`
+  }
+  return `Session ${idx + 1}`
+}
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleString(undefined, {
@@ -119,7 +138,7 @@ function formatDuration(secs?: number): string {
     </div>
 
     <!-- Recently Played -->
-    <div>
+    <div class="mb-6">
       <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">Recently Played</h2>
       <div v-if="playerStore.recentPlays.length === 0" class="bg-white rounded-xl border border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
         No recent plays
@@ -146,6 +165,50 @@ function formatDuration(secs?: number): string {
               <Clock class="w-3 h-3 text-slate-400" />
               <p class="text-xs text-slate-400">{{ formatDate(entry.played_at) }}</p>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session History -->
+    <div data-test="session-history">
+      <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wide mb-3">Session History</h2>
+      <div v-if="sessionsLoading" class="bg-white rounded-xl border border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+        Loading sessions…
+      </div>
+      <div v-else-if="sessions.length === 0" class="bg-white rounded-xl border border-slate-200 px-4 py-6 text-center text-sm text-slate-400">
+        No sessions recorded yet
+      </div>
+      <div v-else class="space-y-3">
+        <div
+          v-for="(session, sIdx) in sessions"
+          :key="session.session_id ?? `unassigned-${sIdx}`"
+          class="bg-white rounded-xl border border-slate-200 p-4"
+          data-test="session-card"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <ListMusic class="w-4 h-4 text-indigo-500" />
+              <p class="text-sm font-semibold text-slate-900">{{ sessionLabel(session, sIdx) }}</p>
+            </div>
+            <span class="text-xs text-slate-400 font-medium">
+              {{ session.play_count }} play{{ session.play_count === 1 ? '' : 's' }}
+            </span>
+          </div>
+          <p v-if="session.context" class="text-xs text-slate-500 mb-2">Context: {{ session.context }}</p>
+          <div class="space-y-1.5">
+            <div
+              v-for="item in session.items.slice(0, 5)"
+              :key="item.id"
+              class="flex items-center gap-2 text-xs text-slate-600"
+            >
+              <span class="w-1.5 h-1.5 rounded-full bg-slate-300" />
+              <span class="flex-1 truncate">{{ item.asset?.title ?? `Asset #${item.asset_id}` }}</span>
+              <span class="text-slate-400">{{ formatDate(item.played_at) }}</span>
+            </div>
+            <p v-if="session.items.length > 5" class="text-xs text-slate-400 pl-3.5">
+              +{{ session.items.length - 5 }} more
+            </p>
           </div>
         </div>
       </div>

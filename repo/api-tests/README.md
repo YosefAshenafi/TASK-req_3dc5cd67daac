@@ -1,6 +1,8 @@
-# API Tests
+# API Tests — Guide
 
-HTTP-level contract tests that exercise every SmartPark endpoint.
+> This directory is a **guide / catalog**, not an executable suite. The real Pest HTTP
+> contract tests live at `backend/tests/Feature/`; running `php artisan test` from inside
+> the `test-runner` container (or via `./run_tests.sh`) is what actually executes them.
 
 - **Tooling:** Pest (PHP), runnable inside the `test-runner` Docker container.
 - **Database:** Dedicated `smartpark_test` MySQL schema; refreshed per run via `RefreshDatabase`.
@@ -18,16 +20,24 @@ backend/tests/Feature/
 ├── Auth/
 │   ├── LoginTest.php
 │   └── UserManagementTest.php
+├── Contracts/
+│   └── ApiContractTest.php
+├── Devices/
+│   ├── GatewayAuthTest.php
+│   ├── IngestionDedupTest.php
+│   └── ReplayAuditTest.php
 ├── Media/
-│   ├── AssetUploadTest.php
-│   └── AssetDeleteReferencedTest.php
+│   ├── AssetDeleteReferencedTest.php
+│   ├── AssetDurationTest.php
+│   ├── AssetReplaceTest.php
+│   └── AssetUploadTest.php
+├── Monitoring/
+│   └── DegradationFlagTest.php
 ├── Playlists/
 │   ├── PlaylistCrudTest.php
 │   └── ShareRedeemTest.php
 ├── Search/
 │   └── SearchRankingTest.php
-├── Devices/
-│   └── IngestionDedupTest.php
-└── Monitoring/
-    └── DegradationFlagTest.php
+└── Security/
+    └── CrossUserIsolationTest.php
 ```

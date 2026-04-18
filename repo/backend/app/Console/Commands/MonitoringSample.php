@@ -3,26 +3,17 @@
 namespace App\Console\Commands;
 
 use App\Models\FeatureFlag;
+use App\Services\Monitoring\MetricsRecorder;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class MonitoringSample extends Command
 {
-    /**
-     * The name and signature of the console command.
-     */
     protected $signature = 'app:monitoring-sample';
-
-    /**
-     * The console command description.
-     */
     protected $description = 'Sample system metrics and check circuit breaker state every 30 seconds.';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle(): int
+    public function handle(MetricsRecorder $metrics): int
     {
         try {
             $latencyThresholdMs = (int) config('smartpark.latency_p95_threshold_ms', 800);
@@ -30,30 +21,16 @@ class MonitoringSample extends Command
             $hitRateMin         = (float) config('smartpark.recommendation_hit_rate_min', 0.10);
             $recoveryMinutes    = (int) config('smartpark.circuit_breaker_recovery_minutes', 15);
             $now                = time();
-            $windowSeconds      = $windowMinutes * 60;
 
-            // --- Compute p95 latency from the rolling window ---
-            $samples = Cache::getRedis()->zRangeByScore(
-                'monitoring:latency_samples',
-                $now - $windowSeconds,
-                '+inf'
-            );
-            $latencies = collect($samples)
-                ->map(fn ($s) => (int) explode(':', $s)[1])
-                ->sort()
-                ->values();
+            // --- Compute p95 latency via MetricsRecorder ---
+            $p95Ms       = $metrics->readLatencyP95($windowMinutes);
+            $p95Breached = $p95Ms > 0 && $p95Ms > $latencyThresholdMs;
 
-            $p95Breached = false;
-            if ($latencies->count() >= 5) {
-                $p95Index    = (int) ceil(0.95 * $latencies->count()) - 1;
-                $p95Ms       = $latencies[$p95Index];
-                $p95Breached = $p95Ms > $latencyThresholdMs;
-            }
-
-            // --- Compute recommendation hit rate ---
-            $requests        = (int) Cache::get('monitoring:recommendation_requests', 0);
-            $hits            = (int) Cache::get('monitoring:recommendation_hits', 0);
-            $hitRateBreached = $requests >= 20 && ($hits / $requests) < $hitRateMin;
+            // --- Compute recommendation hit rate via MetricsRecorder ---
+            $counts          = $metrics->readRecommendationCounts();
+            $hitRateBreached = $counts['requests'] >= 20
+                && $counts['requests'] > 0
+                && ($counts['hits'] / $counts['requests']) < $hitRateMin;
 
             // --- Also check legacy failure counter ---
             $failureCount    = (int) Cache::get('circuit_breaker:recommendation_failures', 0);
@@ -90,8 +67,7 @@ class MonitoringSample extends Command
                     $flag->save();
                     Cache::forget('circuit_breaker:degraded_since');
                     Cache::put('circuit_breaker:recommendation_failures', 0, 3600);
-                    Cache::put('monitoring:recommendation_requests', 0, 3600);
-                    Cache::put('monitoring:recommendation_hits', 0, 3600);
+                    $metrics->resetRecommendationCounters();
                     Log::info('MonitoringSample: Auto-recovered recommended_enabled flag.');
                 }
             }

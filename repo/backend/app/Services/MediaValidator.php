@@ -22,12 +22,38 @@ class MediaValidator
         'audio/mpeg',
     ];
 
+    // finfo can return several aliases for MP3 audio — normalize them.
+    private const MIME_ALIASES = [
+        'audio/mp3'    => 'audio/mpeg',
+        'audio/mpeg3'  => 'audio/mpeg',
+        'audio/x-mpeg' => 'audio/mpeg',
+        'audio/x-mp3'  => 'audio/mpeg',
+    ];
+
+    // finfo returns this for files it can't classify — we fall back to magic-byte checks.
+    private const AMBIGUOUS_MIME_TYPES = [
+        'application/octet-stream',
+        'application/x-empty',
+        'inode/x-empty',
+    ];
+
     /**
      * Validate the file at $tempPath.
      *
-     * @param  string  $tempPath     Path to the temporary uploaded file
-     * @param  string  $declaredMime The MIME type as declared by the client
-     * @return array{valid: bool, reason_code: string, reason: string, sha256: string|null}
+     * Three-layer check:
+     *   1. Client must declare a supported MIME.
+     *   2. Server sniffs the file via finfo (authoritative when a concrete type is returned).
+     *      A concrete sniffed MIME must (a) be in the allowlist and (b) match the declared MIME.
+     *      If finfo is ambiguous (e.g. octet-stream), we fall back to the magic-byte check
+     *      against the declared MIME.
+     *   3. Magic-byte signature must match the authoritative MIME.
+     *
+     * Returns the server-authoritative MIME in `sniffed_mime` so the caller can persist it
+     * instead of whatever the client declared.
+     *
+     * @param  string  $tempPath
+     * @param  string  $declaredMime
+     * @return array{valid: bool, reason_code: string, reason: string, sha256: string|null, sniffed_mime: string|null}
      */
     public function validate(string $tempPath, string $declaredMime): array
     {
@@ -39,19 +65,43 @@ class MediaValidator
             return $this->fail('mime_not_allowed', "File type '{$declaredMime}' is not permitted. Allowed: JPEG, PNG, PDF, MP3, MP4.");
         }
 
-        $size = filesize($tempPath);
+        // Sniff the real type. This is the server-side authoritative check.
+        $sniffedMime = $this->sniffMime($tempPath);
 
-        // Check size limit based on MIME category
-        $maxBytes = in_array($declaredMime, self::LARGE_MIME_TYPES, true)
+        // Decide which MIME we'll treat as authoritative for the rest of the checks.
+        $authoritativeMime = $declaredMime;
+
+        if ($sniffedMime !== null && ! in_array($sniffedMime, self::AMBIGUOUS_MIME_TYPES, true)) {
+            // finfo produced a concrete answer — enforce it.
+            if (! in_array($sniffedMime, self::ALLOWED_MIME_TYPES, true)) {
+                return $this->fail(
+                    'mime_not_allowed',
+                    "Server-detected file type '{$sniffedMime}' is not permitted."
+                );
+            }
+
+            if ($sniffedMime !== $declaredMime) {
+                return $this->fail(
+                    'mime_mismatch',
+                    "Declared MIME '{$declaredMime}' does not match server-detected '{$sniffedMime}'."
+                );
+            }
+
+            $authoritativeMime = $sniffedMime;
+        }
+
+        // Size cap, keyed off the authoritative type.
+        $size     = filesize($tempPath);
+        $maxBytes = in_array($authoritativeMime, self::LARGE_MIME_TYPES, true)
             ? self::VIDEO_MAX_BYTES
             : self::IMAGE_DOC_MAX_BYTES;
 
         if ($size > $maxBytes) {
             $maxMB = $maxBytes / 1024 / 1024;
-            return $this->fail('file_too_large', "File exceeds maximum size of {$maxMB}MB for type {$declaredMime}.");
+            return $this->fail('file_too_large', "File exceeds maximum size of {$maxMB}MB for type {$authoritativeMime}.");
         }
 
-        // Read first 12 bytes for magic byte detection
+        // Magic-byte signature check against the authoritative MIME.
         $handle = fopen($tempPath, 'rb');
         if ($handle === false) {
             return $this->fail('file_unreadable', 'Cannot read the uploaded file.');
@@ -64,31 +114,56 @@ class MediaValidator
             return $this->fail('file_too_small', 'File is too small to determine type.');
         }
 
-        // Validate magic bytes
-        $magicResult = $this->checkMagicBytes($header, $declaredMime);
+        $magicResult = $this->checkMagicBytes($header, $authoritativeMime);
         if (! $magicResult['valid']) {
             return $magicResult;
         }
 
-        // Compute SHA-256
         $sha256 = hash_file('sha256', $tempPath);
 
         return [
-            'valid'       => true,
-            'reason_code' => '',
-            'reason'      => '',
-            'sha256'      => $sha256,
+            'valid'        => true,
+            'reason_code'  => '',
+            'reason'       => '',
+            'sha256'       => $sha256,
+            'sniffed_mime' => $authoritativeMime,
         ];
     }
 
     /**
-     * Check the magic bytes of the file against the declared MIME type.
+     * Sniff the MIME type via finfo. Returns null if finfo is unavailable.
      */
-    private function checkMagicBytes(string $header, string $declaredMime): array
+    private function sniffMime(string $path): ?string
+    {
+        if (! function_exists('finfo_open')) {
+            return null;
+        }
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($finfo === false) {
+            return null;
+        }
+
+        $mime = finfo_file($finfo, $path);
+        finfo_close($finfo);
+
+        if ($mime === false || $mime === '') {
+            return null;
+        }
+
+        $mime = strtolower(trim(explode(';', $mime)[0]));
+
+        return self::MIME_ALIASES[$mime] ?? $mime;
+    }
+
+    /**
+     * Magic-byte signature check for a given MIME type.
+     */
+    private function checkMagicBytes(string $header, string $mime): array
     {
         $bytes = bin2hex($header);
 
-        switch ($declaredMime) {
+        switch ($mime) {
             case 'image/jpeg':
                 if (str_starts_with($bytes, 'ffd8ff')) {
                     return $this->ok();
@@ -108,7 +183,6 @@ class MediaValidator
                 return $this->fail('magic_mismatch', 'File does not appear to be a PDF document.');
 
             case 'audio/mpeg':
-                // ID3 tag: 494433, or MP3 frame sync: fffb, fff3, fff2
                 if (
                     str_starts_with($bytes, '494433') ||
                     str_starts_with($bytes, 'fffb') ||
@@ -120,25 +194,23 @@ class MediaValidator
                 return $this->fail('magic_mismatch', 'File does not appear to be a valid MP3 audio file.');
 
             case 'video/mp4':
-                // MP4: check for 'ftyp' box at byte offset 4 (bytes 4-7 in hex = offset 8-15)
-                // header bytes 4..7 should be 66747970 ('ftyp')
                 if (strlen($header) >= 8 && substr($bytes, 8, 8) === '66747970') {
                     return $this->ok();
                 }
                 return $this->fail('magic_mismatch', 'File does not appear to be a valid MP4 video file.');
 
             default:
-                return $this->fail('mime_not_allowed', "Unrecognized MIME type '{$declaredMime}'.");
+                return $this->fail('mime_not_allowed', "Unrecognized MIME type '{$mime}'.");
         }
     }
 
     private function ok(): array
     {
-        return ['valid' => true, 'reason_code' => '', 'reason' => '', 'sha256' => null];
+        return ['valid' => true, 'reason_code' => '', 'reason' => '', 'sha256' => null, 'sniffed_mime' => null];
     }
 
     private function fail(string $reasonCode, string $reason): array
     {
-        return ['valid' => false, 'reason_code' => $reasonCode, 'reason' => $reason, 'sha256' => null];
+        return ['valid' => false, 'reason_code' => $reasonCode, 'reason' => $reason, 'sha256' => null, 'sniffed_mime' => null];
     }
 }

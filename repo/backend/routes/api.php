@@ -10,6 +10,8 @@ use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\EnforceAccountStatus;
+use App\Http\Middleware\GatewayTokenMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // --------------------------------------------------------------------------
@@ -20,13 +22,26 @@ Route::get('/health', fn () => response()->json(['status' => 'ok']));
 Route::post('/auth/login', [AuthController::class, 'login']);
 
 // --------------------------------------------------------------------------
+// Gateway machine-auth route (X-Gateway-Token shared secret)
+// --------------------------------------------------------------------------
+
+Route::post('/gateway/events', [DeviceController::class, 'ingestEvent'])
+    ->middleware([GatewayTokenMiddleware::class]);
+
+// --------------------------------------------------------------------------
 // Authenticated routes (Sanctum Bearer token)
 // --------------------------------------------------------------------------
 
 Route::middleware(['auth:sanctum'])->group(function () {
 
-    // Auth
+    // Logout must work even for frozen/blacklisted users so they can cleanly end
+    // a session. The account-status middleware runs on everything else below.
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+});
+
+Route::middleware(['auth:sanctum', EnforceAccountStatus::class])->group(function () {
+
+    // Auth
     Route::get('/auth/me', [AuthController::class, 'me']);
 
     // Search
@@ -55,6 +70,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // History
     Route::get('/history', [PlayHistoryController::class, 'index']);
+    Route::get('/history/sessions', [PlayHistoryController::class, 'sessions']);
     Route::get('/now-playing', [PlayHistoryController::class, 'nowPlaying']);
 
     // Recommendations
@@ -67,6 +83,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // Asset management
         Route::post('/assets', [AssetController::class, 'store']);
         Route::delete('/assets/{id}', [AssetController::class, 'destroy']);
+        Route::post('/admin/assets/{id}/replace', [AssetController::class, 'replace']);
 
         // User management
         Route::apiResource('/users', UserController::class);
@@ -76,7 +93,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Monitoring
         Route::get('/monitoring/status', [MonitoringController::class, 'status']);
-        Route::post('/monitoring/feature-flags/recommended/reset', [MonitoringController::class, 'resetRecommended']);
+        Route::post('/monitoring/feature-flags/{flag}/reset', [MonitoringController::class, 'resetFlag']);
     });
 
     // -----------------------------------------------------------------------

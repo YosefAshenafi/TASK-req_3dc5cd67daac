@@ -15,12 +15,12 @@ export interface Asset {
   mime: string
   duration_seconds?: number
   size_bytes: number
-  file_path: string
-  fingerprint_sha256: string
+  file_path?: string
+  fingerprint_sha256?: string
   status: 'processing' | 'ready' | 'failed'
-  thumbnail_urls: { '160': string; '480': string; '960': string }
+  thumbnail_urls?: { '160': string; '480': string; '960': string } | null
   tags: string[]
-  played_count: number
+  played_count?: number
   created_at: string
   reason_tags?: string[]
 }
@@ -30,6 +30,7 @@ export interface Playlist {
   owner_id: number
   name: string
   items?: PlaylistItem[]
+  items_count?: number
   created_at: string
   updated_at: string
 }
@@ -74,6 +75,25 @@ export interface RecommendationCandidate {
   reason_tags: string[]
 }
 
+export interface PlayHistorySession {
+  session_id: string | null
+  started_at: string | null
+  ended_at: string | null
+  play_count: number
+  context?: string | null
+  items: PlayHistoryEntry[]
+}
+
+export interface PlayHistorySessionsResponse {
+  sessions: PlayHistorySession[]
+}
+
+export interface RecommendationsResponse {
+  items: RecommendationCandidate[]
+  degraded: boolean
+  fallback?: 'most_played' | null
+}
+
 export interface Device {
   id: string
   kind: string
@@ -91,6 +111,8 @@ export interface DeviceEvent {
   occurred_at: string
   received_at: string
   is_out_of_order: boolean
+  buffered_by_gateway: boolean
+  buffered_at?: string | null
   payload_json?: any
   status?: 'accepted' | 'duplicate' | 'out_of_order' | 'too_old'
 }
@@ -110,6 +132,20 @@ export interface MonitoringStatus {
   queues: Record<string, number>
   storage: { media_volume_free_bytes: number; media_volume_used_pct: number }
   devices: { online: number; offline: number; dedup_rate_1h: number }
+  content_usage: {
+    window_hours: number
+    plays_24h: number
+    active_users_24h: number
+    total_ready_assets: number
+    favorites_count: number
+    playlists_count: number
+    top_assets: Array<{
+      asset_id: number
+      title: string | null
+      mime: string | null
+      play_count: number
+    }>
+  }
   feature_flags: Record<string, { enabled: boolean; last_transition_at?: string; reason?: string | null }>
 }
 

@@ -126,6 +126,16 @@ function toggleEvent(id: number) {
   expandedEventId.value = expandedEventId.value === id ? null : id
 }
 
+function getStatusTitle(status?: string): string {
+  switch (status) {
+    case 'accepted': return 'Event was accepted and stored'
+    case 'duplicate': return 'Duplicate: event with this idempotency key was already processed'
+    case 'out_of_order': return 'Out of order: sequence gap detected, reconciliation queued'
+    case 'too_old': return 'Too old: event was beyond the 7-day acceptance window'
+    default: return 'Unknown status'
+  }
+}
+
 const statusChips = [
   { label: 'All', value: '' },
   { label: 'Accepted', value: 'accepted' },
@@ -210,8 +220,16 @@ const statusChips = [
             <span class="text-xs font-mono text-gray-400 w-8">{{ event.sequence_no }}</span>
             <span
               :class="['text-xs font-semibold px-2 py-0.5 rounded-full shrink-0', getStatusClass(event.status)]"
+              :title="getStatusTitle(event.status)"
             >
               {{ event.status ?? 'unknown' }}
+            </span>
+            <span
+              v-if="event.buffered_by_gateway"
+              class="text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 bg-purple-100 text-purple-700"
+              :title="event.buffered_at ? 'Originally buffered at ' + new Date(event.buffered_at).toLocaleString() : 'Event was buffered by gateway during offline period'"
+            >
+              buffered
             </span>
             <span class="text-sm text-gray-700 font-medium truncate flex-1">
               {{ event.event_type }}

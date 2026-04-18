@@ -11,6 +11,15 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <testsuite name="Api">
+            <directory>tests/Feature/Auth</directory>
+            <directory>tests/Feature/Contracts</directory>
+            <directory>tests/Feature/Devices</directory>
+            <directory>tests/Feature/Media</directory>
+            <directory>tests/Feature/Monitoring</directory>
+            <directory>tests/Feature/Playlists</directory>
+            <directory>tests/Feature/Search</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

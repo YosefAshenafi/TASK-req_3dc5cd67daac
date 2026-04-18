@@ -13,7 +13,7 @@ const assets = ref<Asset[]>([])
 const nextCursor = ref<string | null>(null)
 const loading = ref(false)
 const loadingMore = ref(false)
-const sort = ref<'played_count' | 'created_at'>('created_at')
+const sort = ref<'most_played' | 'newest'>('newest')
 
 const addToPlaylistAsset = ref<Asset | null>(null)
 
@@ -57,19 +57,19 @@ watch(sort, () => fetchAssets(true))
       </div>
       <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
         <button
-          @click="sort = 'created_at'"
+          @click="sort = 'newest'"
           :class="[
             'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150',
-            sort === 'created_at'
+            sort === 'newest'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
           ]"
         >Newest</button>
         <button
-          @click="sort = 'played_count'"
+          @click="sort = 'most_played'"
           :class="[
             'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150',
-            sort === 'played_count'
+            sort === 'most_played'
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'text-slate-600 hover:text-slate-900'
           ]"

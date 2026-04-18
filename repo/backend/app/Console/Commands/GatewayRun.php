@@ -57,13 +57,39 @@ class GatewayRun extends Command
         $this->db = new \PDO("sqlite:{$path}");
         $this->db->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
         $this->db->exec('PRAGMA journal_mode=WAL');
+
         $this->db->exec('
             CREATE TABLE IF NOT EXISTS buffered_events (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                idempotency_key   TEXT NOT NULL UNIQUE,
+                payload           TEXT NOT NULL,
+                attempts          INTEGER NOT NULL DEFAULT 0,
+                retry_count       INTEGER NOT NULL DEFAULT 0,
+                next_retry_at     INTEGER NOT NULL DEFAULT 0,
+                last_error        TEXT,
+                last_attempted_at INTEGER,
+                created_at        INTEGER NOT NULL
+            )
+        ');
+
+        // Add new columns to existing databases that predate this schema
+        foreach (['retry_count INTEGER NOT NULL DEFAULT 0', 'last_error TEXT', 'last_attempted_at INTEGER'] as $col) {
+            try {
+                $colName = explode(' ', $col)[0];
+                $this->db->exec("ALTER TABLE buffered_events ADD COLUMN {$col}");
+            } catch (\Throwable) {
+                // Column already exists
+            }
+        }
+
+        $this->db->exec('
+            CREATE TABLE IF NOT EXISTS dead_letter (
                 id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                idempotency_key  TEXT NOT NULL UNIQUE,
+                idempotency_key  TEXT NOT NULL,
                 payload          TEXT NOT NULL,
-                attempts         INTEGER NOT NULL DEFAULT 0,
-                next_retry_at    INTEGER NOT NULL DEFAULT 0,
+                http_status      INTEGER,
+                reason           TEXT,
+                dead_lettered_at INTEGER NOT NULL,
                 created_at       INTEGER NOT NULL
             )
         ');
@@ -90,8 +116,8 @@ class GatewayRun extends Command
                 }
 
                 $stmt = $this->db->prepare('
-                    INSERT OR IGNORE INTO buffered_events (idempotency_key, payload, attempts, next_retry_at, created_at)
-                    VALUES (:key, :payload, 0, 0, :now)
+                    INSERT OR IGNORE INTO buffered_events (idempotency_key, payload, attempts, retry_count, next_retry_at, created_at)
+                    VALUES (:key, :payload, 0, 0, 0, :now)
                 ');
                 $stmt->execute([
                     ':key'     => $data['idempotency_key'],
@@ -110,7 +136,7 @@ class GatewayRun extends Command
     {
         $now  = time();
         $rows = $this->db->query("
-            SELECT id, idempotency_key, payload, attempts
+            SELECT id, idempotency_key, payload, attempts, retry_count, created_at
             FROM buffered_events
             WHERE next_retry_at <= {$now}
             ORDER BY id ASC
@@ -118,30 +144,119 @@ class GatewayRun extends Command
         ")->fetchAll(\PDO::FETCH_ASSOC);
 
         foreach ($rows as $row) {
-            try {
-                $status = $this->post($row['idempotency_key'], $row['payload']);
+            $iKey     = $row['idempotency_key'];
+            $payload  = json_decode($row['payload'], true);
+            $deviceId = $payload['device_id'] ?? 'unknown';
 
-                if (in_array($status, [200, 201, 410], true) || ($status >= 400 && $status < 500 && $status !== 429)) {
+            try {
+                [$status, $body] = $this->post($iKey, $row['payload'], (int) $row['created_at']);
+
+                $action = $this->classifyStatus($status);
+
+                Log::info('GatewayRun flush', [
+                    'device_id'           => $deviceId,
+                    'idempotency_key'      => $iKey,
+                    'status'              => $status,
+                    'attempt'             => (int) $row['attempts'] + 1,
+                    'action'              => $action,
+                ]);
+
+                if ($action === 'delete') {
                     $this->db->exec("DELETE FROM buffered_events WHERE id = {$row['id']}");
+                } elseif ($action === 'dead_letter') {
+                    $this->moveToDeadLetter($row, $status, 'Payload rejected by server (deterministic 400)');
                 } else {
+                    // retry — exponential backoff starting at 1s, capped at 300s (per requirements)
                     $attempts     = (int) $row['attempts'] + 1;
-                    $nextRetry    = $now + min(2 ** $attempts, 300);
-                    $stmt         = $this->db->prepare('UPDATE buffered_events SET attempts = :a, next_retry_at = :r WHERE id = :id');
-                    $stmt->execute([':a' => $attempts, ':r' => $nextRetry, ':id' => $row['id']]);
+                    $retryCount   = (int) $row['retry_count'] + 1;
+                    $backoff      = min(2 ** ($attempts - 1), 300);
+                    $nextRetry    = $now + $backoff;
+                    $stmt         = $this->db->prepare(
+                        'UPDATE buffered_events SET attempts = :a, retry_count = :rc, next_retry_at = :r, last_error = :e, last_attempted_at = :lat WHERE id = :id'
+                    );
+                    $stmt->execute([
+                        ':a'   => $attempts,
+                        ':rc'  => $retryCount,
+                        ':r'   => $nextRetry,
+                        ':e'   => "HTTP {$status}",
+                        ':lat' => $now,
+                        ':id'  => $row['id'],
+                    ]);
+
+                    Log::info('GatewayRun retry scheduled', [
+                        'device_id'          => $deviceId,
+                        'idempotency_key'     => $iKey,
+                        'status'             => $status,
+                        'attempt'            => $attempts,
+                        'next_backoff_seconds' => $backoff,
+                    ]);
                 }
             } catch (\Throwable $e) {
-                Log::error("GatewayRun flush: {$e->getMessage()}", ['id' => $row['id']]);
-                $attempts  = (int) $row['attempts'] + 1;
-                $nextRetry = $now + min(2 ** $attempts, 300);
-                $stmt      = $this->db->prepare('UPDATE buffered_events SET attempts = :a, next_retry_at = :r WHERE id = :id');
-                $stmt->execute([':a' => $attempts, ':r' => $nextRetry, ':id' => $row['id']]);
+                Log::error("GatewayRun flush: {$e->getMessage()}", ['id' => $row['id'], 'device_id' => $deviceId]);
+                $attempts   = (int) $row['attempts'] + 1;
+                $retryCount = (int) $row['retry_count'] + 1;
+                $backoff    = min(2 ** ($attempts - 1), 300);
+                $nextRetry  = $now + $backoff;
+                $stmt       = $this->db->prepare(
+                    'UPDATE buffered_events SET attempts = :a, retry_count = :rc, next_retry_at = :r, last_error = :e, last_attempted_at = :lat WHERE id = :id'
+                );
+                $stmt->execute([
+                    ':a'   => $attempts,
+                    ':rc'  => $retryCount,
+                    ':r'   => $nextRetry,
+                    ':e'   => $e->getMessage(),
+                    ':lat' => $now,
+                    ':id'  => $row['id'],
+                ]);
             }
         }
     }
 
-    private function post(string $idempotencyKey, string $payloadJson): int
+    /**
+     * Classify an HTTP status code into 'delete', 'dead_letter', or 'retry'.
+     */
+    private function classifyStatus(int $status): string
     {
-        $ch = curl_init("{$this->apiUrl}/devices/events");
+        // Terminal success outcomes
+        if (in_array($status, [200, 201, 202, 410], true)) {
+            return 'delete';
+        }
+
+        // Payload-deterministic rejection — move to dead letter, do not retry
+        if ($status === 400) {
+            return 'dead_letter';
+        }
+
+        // Auth errors, conflicts, rate limits, server errors, network failure — always retry
+        // 401, 403, 408, 409, 425, 429, 5xx, 0 (no response)
+        return 'retry';
+    }
+
+    private function moveToDeadLetter(array $row, int $status, string $reason): void
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO dead_letter (idempotency_key, payload, http_status, reason, dead_lettered_at, created_at) VALUES (:k, :p, :s, :r, :d, :c)'
+        );
+        $stmt->execute([
+            ':k' => $row['idempotency_key'],
+            ':p' => $row['payload'],
+            ':s' => $status,
+            ':r' => $reason,
+            ':d' => time(),
+            ':c' => $row['created_at'],
+        ]);
+        $this->db->exec("DELETE FROM buffered_events WHERE id = {$row['id']}");
+    }
+
+    /**
+     * POST an event to the gateway endpoint.
+     * Returns [http_status, response_body].
+     */
+    private function post(string $idempotencyKey, string $payloadJson, int $bufferedAt): array
+    {
+        $gatewayToken = config('smartpark.gateway.token') ?: env('GATEWAY_TOKEN', '');
+
+        $ch = curl_init("{$this->apiUrl}/gateway/events");
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payloadJson,
@@ -151,12 +266,15 @@ class GatewayRun extends Command
                 'Content-Type: application/json',
                 "X-Idempotency-Key: {$idempotencyKey}",
                 'X-Buffered: true',
+                "X-Buffered-At: " . date('c', $bufferedAt),
+                "X-Gateway-Token: {$gatewayToken}",
             ],
         ]);
-        curl_exec($ch);
+        $body   = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        return $status ?: 0;
+
+        return [$status ?: 0, $body ?: ''];
     }
 
     private function maybeHealthCheck(): void
@@ -166,7 +284,8 @@ class GatewayRun extends Command
             return;
         }
         $this->lastHealthAt = $now;
-        $count = (int) $this->db->query('SELECT COUNT(*) FROM buffered_events')->fetchColumn();
-        $this->line(json_encode(['status' => 'ok', 'buffered_count' => $count]));
+        $count     = (int) $this->db->query('SELECT COUNT(*) FROM buffered_events')->fetchColumn();
+        $deadCount = (int) $this->db->query('SELECT COUNT(*) FROM dead_letter')->fetchColumn();
+        $this->line(json_encode(['status' => 'ok', 'buffered_count' => $count, 'dead_letter_count' => $deadCount]));
     }
 }

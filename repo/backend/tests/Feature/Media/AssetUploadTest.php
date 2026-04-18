@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     Storage::fake('local');
+    Storage::fake('public');
     Queue::fake();
 });
 
@@ -207,4 +208,60 @@ test('get asset returns detail', function () {
 
     $response->assertStatus(200)
         ->assertJsonStructure(['id', 'title', 'mime', 'status', 'tags']);
+});
+
+test('non-admin cannot see file_path or fingerprint_sha256 in asset detail', function () {
+    $user  = User::factory()->create();
+    $token = $user->createToken('test')->plainTextToken;
+    $asset = Asset::factory()->create();
+
+    $response = $this->withToken($token)->getJson("/api/assets/{$asset->id}");
+
+    $response->assertStatus(200);
+    $body = $response->json();
+    expect($body)->not->toHaveKey('file_path');
+    expect($body)->not->toHaveKey('fingerprint_sha256');
+});
+
+test('admin can see file_path and fingerprint_sha256 in asset detail', function () {
+    $admin = User::factory()->admin()->create();
+    $token = $admin->createToken('test')->plainTextToken;
+    $asset = Asset::factory()->create();
+
+    $response = $this->withToken($token)->getJson("/api/assets/{$asset->id}");
+
+    $response->assertStatus(200)
+        ->assertJsonStructure(['id', 'file_path', 'fingerprint_sha256']);
+});
+
+test('JPEG upload exposes thumbnail_urls in asset detail when set', function () {
+    $admin = User::factory()->admin()->create();
+    $token = $admin->createToken('test')->plainTextToken;
+
+    $response = $this->withToken($token)->postJson('/api/assets', [
+        'title' => 'Thumbnail Test',
+        'file'  => makeJpegUploadFile(),
+    ]);
+
+    $response->assertStatus(201);
+    $assetId = $response->json('id');
+
+    // Simulate what GenerateThumbnails job would do when successful
+    $asset = Asset::find($assetId);
+    $asset->update([
+        'status'         => 'ready',
+        'thumbnail_urls' => [
+            '160' => "thumbs/{$assetId}/160.jpg",
+            '480' => "thumbs/{$assetId}/480.jpg",
+            '960' => "thumbs/{$assetId}/960.jpg",
+        ],
+    ]);
+
+    $detailResponse = $this->withToken($token)->getJson("/api/assets/{$assetId}");
+    $thumbnailUrls  = $detailResponse->json('thumbnail_urls');
+
+    expect($thumbnailUrls)->not->toBeNull();
+    expect($thumbnailUrls)->toHaveKey('160');
+    expect($thumbnailUrls)->toHaveKey('480');
+    expect($thumbnailUrls)->toHaveKey('960');
 });

@@ -29,8 +29,12 @@ class ReconcileDeviceEvents implements ShouldQueue
             return;
         }
 
-        // Find the highest contiguous sequence number
+        // Only look at events beyond the already-confirmed counter; this avoids
+        // re-walking all history on every reconciliation and correctly handles the
+        // case where an in-order event later closes a previously-seen gap.
         $events = DeviceEvent::where('device_id', $this->deviceId)
+            ->where('sequence_no', '>', $device->last_sequence_no)
+            ->whereIn('status', ['accepted', 'out_of_order'])
             ->orderBy('sequence_no')
             ->pluck('sequence_no')
             ->toArray();
@@ -39,12 +43,12 @@ class ReconcileDeviceEvents implements ShouldQueue
             return;
         }
 
-        $maxContiguous = 0;
+        $maxContiguous = (int) $device->last_sequence_no;
         foreach ($events as $seq) {
             if ($seq === $maxContiguous + 1) {
                 $maxContiguous = $seq;
-            } elseif ($seq > $maxContiguous + 1) {
-                break;
+            } else {
+                break; // gap still present — stop here
             }
         }
 

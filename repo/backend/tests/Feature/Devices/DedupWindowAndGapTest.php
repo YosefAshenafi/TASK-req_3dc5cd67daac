@@ -128,6 +128,50 @@ test('sequence regression below last_sequence_no is flagged as out_of_order', fu
         ->assertJsonPath('status', 'out_of_order');
 });
 
+test('in-order event that closes a gap advances last_sequence_no past pending out-of-order events', function () {
+    $token    = techToken();
+    $deviceId = 'gate-gap-fill-01';
+
+    // Seed device at seq 100 (simulating history already processed; no event rows needed
+    // because the updated reconciliation only walks events beyond last_sequence_no).
+    Device::create(['id' => $deviceId, 'kind' => 'gate', 'last_sequence_no' => 100]);
+
+    // Seq 102 arrives first — forward gap (101 is missing).
+    $iKey102 = (string) Str::uuid();
+    $this->withToken($token)
+        ->withHeaders(['X-Idempotency-Key' => $iKey102])
+        ->postJson('/api/devices/events', [
+            'device_id'   => $deviceId,
+            'event_type'  => 'gate.opened',
+            'sequence_no' => 102,
+            'occurred_at' => now()->toIso8601String(),
+        ])
+        ->assertStatus(202)
+        ->assertJsonPath('status', 'out_of_order');
+
+    expect(Device::find($deviceId)->last_sequence_no)->toBe(100);
+
+    // Seq 101 arrives — fills the gap; in-order relative to last_sequence_no=100.
+    $iKey101 = (string) Str::uuid();
+    $this->withToken($token)
+        ->withHeaders(['X-Idempotency-Key' => $iKey101])
+        ->postJson('/api/devices/events', [
+            'device_id'   => $deviceId,
+            'event_type'  => 'gate.opened',
+            'sequence_no' => 101,
+            'occurred_at' => now()->toIso8601String(),
+        ])
+        ->assertStatus(201)
+        ->assertJsonPath('status', 'accepted');
+
+    // The controller advances last_sequence_no to 101 and dispatches reconciliation
+    // because seq 102 is still pending as out_of_order. Run the job synchronously.
+    (new \App\Jobs\ReconcileDeviceEvents($deviceId))->handle();
+
+    // Counter must advance past the unblocked out-of-order seq 102.
+    expect(Device::find($deviceId)->fresh()->last_sequence_no)->toBe(102);
+});
+
 test('strictly in-order event (last + 1) is accepted as normal', function () {
     $token    = techToken();
     $deviceId = 'gate-normal-01';

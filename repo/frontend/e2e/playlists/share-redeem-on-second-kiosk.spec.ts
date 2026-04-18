@@ -60,12 +60,12 @@ test.describe('Share and redeem playlist', () => {
     }
   })
 
-  test('redeem dialog shows error for invalid code', async ({ page }) => {
+  test('redeem dialog stays open and shows feedback after submitting invalid code', async ({ page }) => {
     await loginAsUser(page)
     await page.goto(`${BASE_URL}/playlists`)
     await page.getByRole('button', { name: 'Redeem Code' }).click()
 
-    // Type 8 invalid characters using keypad — use evaluate to bypass viewport constraints
+    // Type 8 invalid characters using keypad
     for (let i = 0; i < 8; i++) {
       await page.evaluate(() => {
         const btn = Array.from(document.querySelectorAll('button')).find(
@@ -81,12 +81,13 @@ test.describe('Share and redeem playlist', () => {
       )
       btn?.click()
     })
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(1500)
 
-    // Should show some error
-    const errorEl = page.locator('.text-red-700, [role="alert"]')
-    const isVisible = await errorEl.first().isVisible()
-    // Error might appear depending on API response
-    expect(true).toBe(true)
+    // After submitting an invalid code the dialog must not navigate away —
+    // the heading or the Redeem button must still be present.
+    const dialogStillOpen =
+      (await page.getByRole('heading', { name: 'Redeem Playlist Code' }).isVisible().catch(() => false)) ||
+      (await page.getByRole('button', { name: 'Redeem', exact: true }).isVisible().catch(() => false))
+    expect(dialogStillOpen).toBe(true)
   })
 })

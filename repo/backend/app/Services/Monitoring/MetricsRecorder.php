@@ -16,8 +16,10 @@ class MetricsRecorder
         $now           = time();
         $windowSeconds = (int) config('smartpark.latency_window_minutes', 5) * 60;
         try {
-            $redis = Cache::getRedis();
-            $redis->zAdd(self::LATENCY_KEY, $now, "{$now}:{$ms}");
+            $redis  = Cache::getRedis();
+            // Include a random suffix so same-second same-ms samples don't overwrite each other.
+            $member = "{$now}:{$ms}:" . bin2hex(random_bytes(4));
+            $redis->zAdd(self::LATENCY_KEY, $now, $member);
             $redis->zRemRangeByScore(self::LATENCY_KEY, '-inf', $now - $windowSeconds);
         } catch (\Throwable) {
             // Redis unavailable — silently skip
@@ -114,20 +116,42 @@ class MetricsRecorder
 
     public function incrementRecommendationRequests(): void
     {
-        Cache::increment(self::REC_REQUESTS_KEY);
+        $now           = time();
+        $windowSeconds = (int) config('smartpark.latency_window_minutes', 5) * 60;
+        try {
+            $redis  = Cache::getRedis();
+            $member = "{$now}:" . bin2hex(random_bytes(4));
+            $redis->zAdd(self::REC_REQUESTS_KEY, $now, $member);
+            $redis->zRemRangeByScore(self::REC_REQUESTS_KEY, '-inf', $now - $windowSeconds);
+        } catch (\Throwable) {
+        }
     }
 
     public function incrementRecommendationHits(): void
     {
-        Cache::increment(self::REC_HITS_KEY);
+        $now           = time();
+        $windowSeconds = (int) config('smartpark.latency_window_minutes', 5) * 60;
+        try {
+            $redis  = Cache::getRedis();
+            $member = "{$now}:" . bin2hex(random_bytes(4));
+            $redis->zAdd(self::REC_HITS_KEY, $now, $member);
+            $redis->zRemRangeByScore(self::REC_HITS_KEY, '-inf', $now - $windowSeconds);
+        } catch (\Throwable) {
+        }
     }
 
     public function readRecommendationCounts(): array
     {
-        return [
-            'requests' => (int) Cache::get(self::REC_REQUESTS_KEY, 0),
-            'hits'     => (int) Cache::get(self::REC_HITS_KEY, 0),
-        ];
+        $now           = time();
+        $windowSeconds = (int) config('smartpark.latency_window_minutes', 5) * 60;
+        try {
+            $redis    = Cache::getRedis();
+            $requests = (int) $redis->zCount(self::REC_REQUESTS_KEY, $now - $windowSeconds, '+inf');
+            $hits     = (int) $redis->zCount(self::REC_HITS_KEY, $now - $windowSeconds, '+inf');
+            return ['requests' => $requests, 'hits' => $hits];
+        } catch (\Throwable) {
+            return ['requests' => 0, 'hits' => 0];
+        }
     }
 
     public function readRecommendationHitRate(): float
@@ -139,7 +163,13 @@ class MetricsRecorder
 
     public function resetRecommendationCounters(): void
     {
-        Cache::put(self::REC_REQUESTS_KEY, 0, 3600);
-        Cache::put(self::REC_HITS_KEY, 0, 3600);
+        try {
+            $redis = Cache::getRedis();
+            $redis->del(self::REC_REQUESTS_KEY);
+            $redis->del(self::REC_HITS_KEY);
+        } catch (\Throwable) {
+            Cache::forget(self::REC_REQUESTS_KEY);
+            Cache::forget(self::REC_HITS_KEY);
+        }
     }
 }

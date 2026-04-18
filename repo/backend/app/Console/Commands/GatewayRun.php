@@ -111,8 +111,27 @@ class GatewayRun extends Command
 
                 $count = (int) $this->db->query('SELECT COUNT(*) FROM buffered_events')->fetchColumn();
                 if ($count >= $this->maxBuffer) {
-                    $excess = $count - $this->maxBuffer + 1;
-                    $this->db->exec("DELETE FROM buffered_events WHERE id IN (SELECT id FROM buffered_events ORDER BY id ASC LIMIT {$excess})");
+                    // Buffer is full — move the incoming event to dead_letter rather than
+                    // silently evicting the oldest buffered events (which would cause data
+                    // loss of already-queued records during a prolonged backend outage).
+                    Log::warning('GatewayRun: buffer at capacity — rejecting new inbox event', [
+                        'buffered_count'  => $count,
+                        'max_buffer'      => $this->maxBuffer,
+                        'idempotency_key' => $data['idempotency_key'],
+                    ]);
+                    $dl = $this->db->prepare(
+                        'INSERT INTO dead_letter (idempotency_key, payload, http_status, reason, dead_lettered_at, created_at) VALUES (:k, :p, :s, :r, :d, :c)'
+                    );
+                    $dl->execute([
+                        ':k' => $data['idempotency_key'],
+                        ':p' => $raw,
+                        ':s' => 0,
+                        ':r' => 'GATEWAY_BUFFER_FULL',
+                        ':d' => time(),
+                        ':c' => time(),
+                    ]);
+                    @unlink($file);
+                    continue;
                 }
 
                 $stmt = $this->db->prepare('

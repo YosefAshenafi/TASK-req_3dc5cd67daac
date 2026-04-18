@@ -73,14 +73,28 @@ function handleUnfavorited(assetId: number) {
 
     <!-- Grid -->
     <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-      <AssetTile
-        v-for="fav in favorites"
-        :key="fav.asset_id"
-        :asset="fav.asset!"
-        :is-favorited="true"
-        @unfavorited="handleUnfavorited"
-        @add-to-playlist="addToPlaylistFav = fav"
-      />
+      <template v-for="fav in favorites" :key="fav.asset_id">
+        <AssetTile
+          v-if="fav.asset"
+          :asset="fav.asset"
+          :is-favorited="true"
+          @unfavorited="handleUnfavorited"
+          @add-to-playlist="addToPlaylistFav = fav"
+        />
+        <div
+          v-else
+          class="bg-white rounded-xl border border-slate-200 overflow-hidden opacity-50"
+        >
+          <div class="aspect-video bg-slate-100 flex items-center justify-center">
+            <svg class="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          </div>
+          <div class="p-3">
+            <p class="text-sm text-slate-400 italic">Asset unavailable</p>
+          </div>
+        </div>
+      </template>
     </div>
 
     <!-- Load more -->

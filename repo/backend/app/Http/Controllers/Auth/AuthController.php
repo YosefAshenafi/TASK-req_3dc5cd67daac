@@ -24,7 +24,8 @@ class AuthController extends Controller
         ]);
 
         $username = $request->input('username');
-        $throttleKey = 'login_attempts:' . strtolower($username);
+        // Combine username + IP so an attacker cannot lock out accounts from arbitrary IPs.
+        $throttleKey = 'login_attempts:' . strtolower($username) . ':' . $request->ip();
 
         // Check rate limit: max 5 attempts in 15 minutes
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {

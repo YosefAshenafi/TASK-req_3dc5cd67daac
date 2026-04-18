@@ -54,7 +54,7 @@ export interface PlaylistShare {
 export interface Favorite {
   user_id: number
   asset_id: number
-  asset?: Asset
+  asset?: Asset | null
   created_at: string
 }
 

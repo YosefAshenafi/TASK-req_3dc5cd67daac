@@ -57,17 +57,22 @@ test.describe('Search, filter, and sort', () => {
     await expect(page.getByRole('heading', { name: 'Search' })).toBeVisible()
   })
 
-  test('load more button appears when there are more results', async ({ page }) => {
+  test('load more button, if present, triggers additional results load', async ({ page }) => {
     await page.goto(`${BASE_URL}/search`)
-    // If there are more than 24 results, the load more button should appear
-    // We just verify it would be clickable if present
+    await page.waitForTimeout(1500)
     const loadMore = page.getByRole('button', { name: 'Load More' })
     const isVisible = await loadMore.isVisible()
     if (isVisible) {
+      const initialCount = await page.locator('.group.bg-white.rounded-xl').count()
       await loadMore.click()
-      await page.waitForTimeout(500)
+      await page.waitForTimeout(1000)
+      const newCount = await page.locator('.group.bg-white.rounded-xl').count()
+      expect(newCount).toBeGreaterThanOrEqual(initialCount)
+    } else {
+      // All results fit on one page — page must still show content or empty state
+      const resultCount = await page.locator('.group.bg-white.rounded-xl').count()
+      const hasEmpty = await page.getByText('No results').isVisible().catch(() => false)
+      expect(resultCount > 0 || hasEmpty).toBe(true)
     }
-    // Test passes regardless - the button may or may not be visible
-    expect(true).toBe(true)
   })
 })

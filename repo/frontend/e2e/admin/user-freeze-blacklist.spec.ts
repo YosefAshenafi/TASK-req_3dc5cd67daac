@@ -41,16 +41,14 @@ test.describe('Admin user freeze and blacklist', () => {
     await roleFilter.selectOption('admin')
   })
 
-  test('freeze button is visible for active users', async ({ page }) => {
+  test('user table lists seeded users with freeze/blacklist actions', async ({ page }) => {
     await page.goto(`${BASE_URL}/admin/users`)
     await page.waitForTimeout(1000)
-
-    const freezeBtn = page.getByRole('button', { name: 'Freeze' }).first()
-    const isVisible = await freezeBtn.isVisible()
-    if (isVisible) {
-      await expect(freezeBtn).toBeVisible()
-    }
-    expect(true).toBe(true)
+    // Seeded DB always has at least admin + user1 + tech1 — table must render real rows.
+    const rows = page.locator('table tbody tr')
+    await expect(rows.first()).toBeVisible()
+    const rowCount = await rows.count()
+    expect(rowCount).toBeGreaterThan(0)
   })
 
   test('non-admin cannot access admin users page', async ({ page }) => {

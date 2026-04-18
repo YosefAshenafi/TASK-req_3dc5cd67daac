@@ -204,6 +204,12 @@ class DeviceController extends Controller
                 'last_seen_at'     => now(),
             ]);
 
+        // If pending out-of-order events exist this in-order arrival may have just closed
+        // the gap that was blocking them — dispatch reconciliation to advance past them.
+        if (DeviceEvent::where('device_id', $deviceId)->where('status', 'out_of_order')->exists()) {
+            ReconcileDeviceEvents::dispatch($deviceId);
+        }
+
         return response()->json([
             'status'   => 'accepted',
             'event_id' => $event->id,

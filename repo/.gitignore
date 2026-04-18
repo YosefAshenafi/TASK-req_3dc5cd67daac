@@ -6,7 +6,6 @@
 /frontend/dist/
 /backend/storage/app/media/
 /backend/storage/logs/
-/docker/secrets/field_encryption.key
 *.log
 .DS_Store
 .vscode/

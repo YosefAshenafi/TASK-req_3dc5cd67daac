@@ -81,10 +81,8 @@ test('upload over size cap is rejected', function () {
     $admin = User::factory()->admin()->create();
     $token = $admin->createToken('test')->plainTextToken;
 
-    // 26MB JPEG (over 25MB cap)
-    $content  = "\xFF\xD8\xFF\xE0" . str_repeat('x', 26 * 1024 * 1024);
-    $tempFile = tempnam(sys_get_temp_dir(), 'test') . '.jpg';
-    file_put_contents($tempFile, $content);
+    // 26MB JPEG (over 25MB cap) — written in chunks to avoid exhausting PHP memory.
+    $tempFile = write_oversized_jpeg_temp_path();
     $file = new UploadedFile($tempFile, 'big.jpg', 'image/jpeg', null, true);
 
     $response = $this->withToken($token)->postJson('/api/assets', [

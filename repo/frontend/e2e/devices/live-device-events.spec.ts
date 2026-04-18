@@ -25,13 +25,15 @@ test.describe('Live device events integration', () => {
       sequence_no: 100,
       occurred_at: new Date().toISOString(),
       payload: { lane: 'W1' },
-      idempotency_key: idempotencyKey,
     }
 
+    // The API requires the idempotency key in the X-Idempotency-Key header
+    // (see DeviceController::events) — sending it only in the body is rejected with 400.
     const ingestResponse = await request.post(`${API_BASE_URL}/api/devices/events`, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'X-Idempotency-Key': idempotencyKey,
       },
       data: payload,
     })

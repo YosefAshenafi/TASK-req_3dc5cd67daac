@@ -10,7 +10,7 @@
 ## Run
 
 ```bash
-docker compose --profile test run --rm test-runner php artisan test --testsuite=Api
+docker compose --profile test run --rm test-runner php artisan test --testsuite=Feature
 ```
 
 ## Test files

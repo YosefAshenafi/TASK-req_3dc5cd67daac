@@ -22,14 +22,15 @@ test.describe('Admin user freeze and blacklist', () => {
 
   test('user table displays with role/status columns', async ({ page }) => {
     await page.goto(`${BASE_URL}/admin/users`)
-    await expect(page.getByText('Role', { exact: true })).toBeVisible()
-    await expect(page.getByText('Status', { exact: true })).toBeVisible()
-    await expect(page.getByText('Actions', { exact: true })).toBeVisible()
+    // Use column-header role so we don't collide with filter labels that share these names.
+    await expect(page.getByRole('columnheader', { name: 'Role' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Status' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: 'Actions' })).toBeVisible()
   })
 
   test('can open create user form', async ({ page }) => {
     await page.goto(`${BASE_URL}/admin/users`)
-    await page.getByRole('button', { name: '+ Create User' }).click()
+    await page.getByRole('button', { name: 'Create User' }).click()
     await expect(page.getByText('New User')).toBeVisible()
     await expect(page.getByRole('combobox').first()).toBeVisible()
   })

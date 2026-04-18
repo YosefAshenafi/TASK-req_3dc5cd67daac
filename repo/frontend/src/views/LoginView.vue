@@ -149,7 +149,7 @@ function getHomeForRole(role: string): string {
           </div>
 
           <!-- Error states -->
-          <div v-if="error" class="mb-5 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+          <div v-if="error" role="alert" class="mb-5 flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
             <AlertCircle class="w-4 h-4 mt-0.5 shrink-0" />
             <span>{{ error }}</span>
           </div>

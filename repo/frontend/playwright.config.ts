@@ -6,7 +6,8 @@ export default defineConfig({
   timeout: 60 * 1000,
   expect: { timeout: 10000 },
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  // CI: 1 retry balances flake resistance vs total runtime (was 2 × many specs = very slow on failure)
+  retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {

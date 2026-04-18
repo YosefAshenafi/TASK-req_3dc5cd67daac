@@ -62,6 +62,13 @@ test('nested sensitive keys are redacted', function () {
     expect($out->context['request']['body']['username'])->toBe('alice');
 });
 
+test('key containing sensitive substring is redacted even when not in exact list', function () {
+    // 'csrf_token' is not in MASKED_KEYS but contains 'token' — hits the substring path
+    $out = (new MaskSensitiveFields())(recordWith(['csrf_token' => 'abc123', 'refresh_token' => 'xyz']));
+    expect($out->context['csrf_token'])->toBe('[REDACTED]');
+    expect($out->context['refresh_token'])->toBe('[REDACTED]');
+});
+
 test('non-sensitive context is preserved', function () {
     $out = (new MaskSensitiveFields())(recordWith(['device_id' => 'gate-01', 'event_type' => 'gate.opened']));
     expect($out->context['device_id'])->toBe('gate-01');

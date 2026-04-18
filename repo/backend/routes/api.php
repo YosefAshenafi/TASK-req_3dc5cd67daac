@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\MonitoringController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\PlayHistoryController;
 use App\Http\Controllers\PlaylistController;
 use App\Http\Controllers\RecommendationController;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => response()->json(['status' => 'ok']));
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::get('/settings', [SettingsController::class, 'show']);
 
 // --------------------------------------------------------------------------
 // Gateway machine-auth route (X-Gateway-Token shared secret)
@@ -94,6 +96,9 @@ Route::middleware(['auth:sanctum', EnforceAccountStatus::class])->group(function
         // Monitoring
         Route::get('/monitoring/status', [MonitoringController::class, 'status']);
         Route::post('/monitoring/feature-flags/{flag}/reset', [MonitoringController::class, 'resetFlag']);
+
+        // Settings
+        Route::put('/settings', [SettingsController::class, 'update']);
     });
 
     // -----------------------------------------------------------------------

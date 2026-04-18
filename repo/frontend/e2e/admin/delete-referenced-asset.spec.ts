@@ -17,7 +17,7 @@ test.describe('Delete referenced asset', () => {
 
   test('library page loads for admin', async ({ page }) => {
     await page.goto(`${BASE_URL}/library`)
-    await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible()
   })
 
   test('admin can view library with sort controls', async ({ page }) => {
@@ -44,6 +44,6 @@ test.describe('Delete referenced asset', () => {
 
     await page.goto(`${BASE_URL}/library`)
     // Test setup is valid even without specific delete button interaction
-    await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible()
   })
 })

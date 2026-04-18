@@ -18,7 +18,7 @@ test.describe('Admin upload validation', () => {
   test('uploads page displays heading and drop zone', async ({ page }) => {
     await page.goto(`${BASE_URL}/admin/uploads`)
     await expect(page.getByRole('heading', { name: 'Upload Media' })).toBeVisible()
-    await expect(page.getByText('Drag & drop files here')).toBeVisible()
+    await expect(page.getByText('Drop files here')).toBeVisible()
   })
 
   test('browse files button is present', async ({ page }) => {

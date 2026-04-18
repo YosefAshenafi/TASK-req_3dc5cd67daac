@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import type { Asset } from '@/types/api'
 import { searchApi } from '@/services/api'
 import { useUiStore } from '@/stores/ui'
+import { useSettingsStore } from '@/stores/settings'
 import AssetTile from '@/components/AssetTile.vue'
 import AddToPlaylistDialog from '@/components/AddToPlaylistDialog.vue'
 import { Search, AlertTriangle, Loader2, SlidersHorizontal } from 'lucide-vue-next'
 
 const uiStore = useUiStore()
+const settingsStore = useSettingsStore()
 
 const query = ref('')
 const selectedTags = ref<string[]>([])
@@ -26,7 +28,7 @@ const addToPlaylistAsset = ref<Asset | null>(null)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let abortController: AbortController | null = null
 
-const availableTags = ['Safety', 'Overnight', 'Gate Issues', 'Parking', 'Event', 'General', 'Emergency']
+const availableTags = computed(() => settingsStore.availableTags)
 
 const durationOptions = [
   { label: 'Any', value: null },

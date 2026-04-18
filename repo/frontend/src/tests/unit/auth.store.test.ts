@@ -109,6 +109,35 @@ describe('Auth Store', () => {
 
       expect(store.loading).toBe(false)
     })
+
+    it('should skip fetchMe when no stored token', async () => {
+      const { authApi, getStoredToken } = await import('@/services/api')
+      vi.mocked(getStoredToken).mockReturnValueOnce(null)
+
+      const store = useAuthStore()
+      await store.fetchMe()
+
+      expect(authApi.me).not.toHaveBeenCalled()
+      expect(store.user).toBeNull()
+    })
+
+    it('should clear user on fetchMe when API returns 401', async () => {
+      const { authApi, ApiError } = await import('@/services/api')
+      vi.mocked(authApi.me).mockRejectedValue(new ApiError(401, null))
+
+      const store = useAuthStore()
+      await store.fetchMe()
+
+      expect(store.user).toBeNull()
+    })
+
+    it('should rethrow fetchMe when API returns non-401 error', async () => {
+      const { authApi, ApiError } = await import('@/services/api')
+      vi.mocked(authApi.me).mockRejectedValue(new ApiError(503, {}, 'Unavailable'))
+
+      const store = useAuthStore()
+      await expect(store.fetchMe()).rejects.toMatchObject({ status: 503 })
+    })
   })
 
   describe('role getters', () => {

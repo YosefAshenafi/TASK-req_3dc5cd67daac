@@ -22,16 +22,16 @@ test.describe('Playlist build and edit', () => {
 
   test('can open create playlist form', async ({ page }) => {
     await page.goto(`${BASE_URL}/playlists`)
-    await page.getByRole('button', { name: '+ New Playlist' }).click()
-    await expect(page.getByPlaceholder('Playlist name…')).toBeVisible()
+    await page.getByRole('button', { name: 'New Playlist' }).click()
+    await expect(page.getByPlaceholder('Enter playlist name…')).toBeVisible()
   })
 
   test('can create a new playlist', async ({ page }) => {
     await page.goto(`${BASE_URL}/playlists`)
-    await page.getByRole('button', { name: '+ New Playlist' }).click()
+    await page.getByRole('button', { name: 'New Playlist' }).click()
 
     const testName = `Test Playlist ${Date.now()}`
-    await page.getByPlaceholder('Playlist name…').fill(testName)
+    await page.getByPlaceholder('Enter playlist name…').fill(testName)
     await page.getByRole('button', { name: 'Create' }).click()
 
     await expect(page.getByText(testName)).toBeVisible({ timeout: 5000 })
@@ -41,9 +41,9 @@ test.describe('Playlist build and edit', () => {
     await page.goto(`${BASE_URL}/playlists`)
 
     // Create a playlist first
-    await page.getByRole('button', { name: '+ New Playlist' }).click()
+    await page.getByRole('button', { name: 'New Playlist' }).click()
     const testName = `Nav Test ${Date.now()}`
-    await page.getByPlaceholder('Playlist name…').fill(testName)
+    await page.getByPlaceholder('Enter playlist name…').fill(testName)
     await page.getByRole('button', { name: 'Create' }).click()
     await page.waitForTimeout(500)
 
@@ -57,9 +57,9 @@ test.describe('Playlist build and edit', () => {
     await page.goto(`${BASE_URL}/playlists`)
 
     // Create a playlist
-    await page.getByRole('button', { name: '+ New Playlist' }).click()
+    await page.getByRole('button', { name: 'New Playlist' }).click()
     const originalName = `Edit Test ${Date.now()}`
-    await page.getByPlaceholder('Playlist name…').fill(originalName)
+    await page.getByPlaceholder('Enter playlist name…').fill(originalName)
     await page.getByRole('button', { name: 'Create' }).click()
     await page.waitForTimeout(500)
 

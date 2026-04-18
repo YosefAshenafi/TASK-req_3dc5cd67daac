@@ -17,6 +17,13 @@ test('EncryptedField round-trips email value', function () {
     expect($decrypted)->toEqual($plaintext);
 });
 
+test('EncryptedField get returns null when ciphertext cannot be decrypted', function () {
+    $cast  = new EncryptedField();
+    $model = new User();
+
+    expect($cast->get($model, 'email_enc', 'not-valid-ciphertext', []))->toBeNull();
+});
+
 test('EncryptedField handles null values', function () {
     $cast  = new EncryptedField();
     $model = new User();

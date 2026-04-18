@@ -3,14 +3,16 @@ import { ref, computed } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import { useSettingsStore } from '@/stores/settings'
 import {
   Search, Library, Heart, ListMusic, Music, Settings,
   Users, Upload, BarChart2, Cpu, LogOut, Bell, Menu, X,
-  WifiOff, CheckCircle2, AlertCircle, AlertTriangle, Info
+  WifiOff, CheckCircle2, AlertCircle, AlertTriangle, Info, SlidersHorizontal
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 const uiStore = useUiStore()
+const settingsStore = useSettingsStore()
 const router = useRouter()
 const sidebarOpen = ref(false)
 
@@ -22,6 +24,7 @@ const navLinks = computed(() => {
       { name: 'Users', to: '/admin/users', icon: Users },
       { name: 'Uploads', to: '/admin/uploads', icon: Upload },
       { name: 'Monitoring', to: '/admin/monitoring', icon: Cpu },
+      { name: 'Settings', to: '/admin/settings', icon: SlidersHorizontal },
       { name: 'Devices', to: '/devices', icon: Settings },
     ]
   }
@@ -46,7 +49,7 @@ const roleBadgeStyle = computed(() => {
   switch (authStore.user?.role) {
     case 'admin': return 'bg-red-500/20 text-red-300 border-red-500/30'
     case 'technician': return 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-    default: return 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+    default: return 'bg-sky-500/20 text-sky-300 border-sky-500/30'
   }
 })
 
@@ -71,7 +74,7 @@ async function handleLogout() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50 flex">
+  <div class="min-h-screen bg-gray-50 flex">
     <!-- Mobile overlay -->
     <Transition name="fade">
       <div
@@ -84,23 +87,23 @@ async function handleLogout() {
     <!-- Sidebar -->
     <aside
       :class="[
-        'fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 flex flex-col',
+        'fixed inset-y-0 left-0 z-50 w-64 bg-gray-950 flex flex-col',
         'transition-transform duration-300 ease-in-out',
         'lg:static lg:translate-x-0 lg:z-auto',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       ]"
     >
       <!-- Brand -->
-      <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/30">
+          <div class="w-8 h-8 bg-gradient-to-br from-sky-500 to-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-sky-500/30">
             <Music class="w-4 h-4 text-white" />
           </div>
-          <span class="text-base font-bold text-white tracking-tight">SmartPark</span>
+          <span class="text-base font-bold text-white tracking-tight">{{ settingsStore.siteName }}</span>
         </div>
         <button
           @click="sidebarOpen = false"
-          class="lg:hidden p-1.5 rounded-md text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
+          class="lg:hidden p-1.5 rounded-md text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
         >
           <X class="w-4 h-4" />
         </button>
@@ -113,8 +116,8 @@ async function handleLogout() {
           :key="link.to"
           :to="link.to"
           @click="sidebarOpen = false"
-          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all duration-150 text-sm font-medium group"
-          active-class="!text-white !bg-indigo-600 shadow-sm shadow-indigo-500/30"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/80 transition-all duration-150 text-sm font-medium group"
+          active-class="!text-white !bg-sky-600 shadow-sm shadow-sky-500/30"
         >
           <component :is="link.icon" class="w-4 h-4 shrink-0 transition-transform group-hover:scale-110" />
           {{ link.name }}
@@ -122,9 +125,9 @@ async function handleLogout() {
       </nav>
 
       <!-- User profile -->
-      <div class="px-3 pb-4 pt-2 border-t border-slate-800 space-y-1">
+      <div class="px-3 pb-4 pt-2 border-t border-gray-800 space-y-1">
         <div v-if="authStore.user" class="flex items-center gap-3 px-3 py-2 rounded-lg">
-          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
             {{ userInitial }}
           </div>
           <div class="flex-1 min-w-0">
@@ -148,7 +151,7 @@ async function handleLogout() {
 
         <button
           @click="handleLogout"
-          class="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all duration-150 text-sm font-medium group"
+          class="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/80 transition-all duration-150 text-sm font-medium group"
         >
           <LogOut class="w-4 h-4 shrink-0 transition-transform group-hover:scale-110" />
           Sign out
@@ -159,12 +162,12 @@ async function handleLogout() {
     <!-- Main content -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
       <!-- Top bar -->
-      <header class="bg-white/90 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-30">
+      <header class="bg-white/90 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-30">
         <div class="flex items-center gap-3 px-4 sm:px-6 h-14">
           <!-- Mobile menu -->
           <button
             @click="sidebarOpen = true"
-            class="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            class="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
           >
             <Menu class="w-5 h-5" />
           </button>
@@ -173,7 +176,7 @@ async function handleLogout() {
 
           <!-- Notification bell -->
           <button
-            class="relative p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            class="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
             aria-label="Notifications"
           >
             <Bell class="w-5 h-5" />

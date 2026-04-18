@@ -27,6 +27,7 @@ import type {
   SearchParams,
   UploadAssetMetadata,
   InitiateReplayRequest,
+  AppSettings,
 } from '@/types/api'
 
 const TOKEN_KEY = 'smartpark_token'
@@ -368,4 +369,12 @@ export const monitoringApi = {
   status: (): Promise<MonitoringStatus> => get<MonitoringStatus>('/monitoring/status'),
   resetFlag: (flag: string): Promise<void> =>
     post<void>(`/monitoring/feature-flags/${flag}/reset`),
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+
+export const settingsApi = {
+  get: (): Promise<AppSettings> => get<AppSettings>('/settings'),
+  update: (data: Partial<AppSettings>): Promise<AppSettings> =>
+    put<AppSettings>('/settings', data),
 }

@@ -71,6 +71,12 @@ services:
       - media-storage:/var/www/html/storage/app/media
     secrets:
       - field_key
+    healthcheck:
+      test: ["CMD", "test", "-f", "/var/www/html/vendor/autoload.php"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 180s
     networks: [smartpark-lan]
 
   queue-worker:
@@ -80,7 +86,7 @@ services:
     container_name: smartpark-queue
     restart: unless-stopped
     depends_on:
-      backend: { condition: service_started }
+      backend: { condition: service_healthy }
     command: ["php", "artisan", "horizon"]
     environment:
       DB_HOST: mysql
@@ -98,7 +104,7 @@ services:
     container_name: smartpark-scheduler
     restart: unless-stopped
     depends_on:
-      backend: { condition: service_started }
+      backend: { condition: service_healthy }
     command: ["php", "artisan", "schedule:work"]
     environment:
       DB_HOST: mysql
@@ -233,10 +239,12 @@ services:
       [
         "sh",
         "-c",
-        "set -e; npm ci; exec npx playwright test --project=chromium",
+        "set -e; npm ci; exec npx playwright test --project=desktop",
       ]
     environment:
       PLAYWRIGHT_BASE_URL: http://nginx
+      # API lives behind the same nginx reverse proxy as the SPA (not localhost:8090)
+      PLAYWRIGHT_API_BASE_URL: http://nginx
       CI: "1"
     volumes:
       - ./frontend:/app

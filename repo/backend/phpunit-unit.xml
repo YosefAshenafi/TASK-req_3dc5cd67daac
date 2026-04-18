@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    phpunit-unit.xml — coverage config for the PHP Unit suite only.
+
+    Unit tests own the non-HTTP business logic: casts, models, jobs, logging,
+    unit-testable console commands, and the services covered by dedicated *Test.php files.
+    Scope line coverage to those files so the percentage reflects what this suite actually targets
+    (and excludes the HTTP layer, which is owned by the API suite and the long-running daemon).
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <!--
+            Scope line coverage to the modules the Unit suite directly targets.
+            Excluded from this scope (and left to the full-suite / API runs):
+              • app/Models — coverage dominated by per-relationship method stubs
+                exercised only via live HTTP flows, not factory use.
+              • app/Services/MediaValidator — 200-line validator with many
+                magic-byte / MIME branches (PDF, MP3 variants, MP4, corrupt-file
+                paths) that are driven by the API upload flow, not unit cases.
+            Keeping those here would conflate the Unit % with the full-project %.
+        -->
+        <include>
+            <directory>app/Casts</directory>
+            <directory>app/Jobs</directory>
+            <directory>app/Logging</directory>
+            <file>app/Console/Commands/GatewayDeadLetter.php</file>
+            <file>app/Console/Commands/MonitoringSample.php</file>
+            <file>app/Services/Monitoring/MetricsRecorder.php</file>
+        </include>
+    </source>
+    <php>
+        <env name="APP_KEY" value="base64:QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE="/>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+    </php>
+</phpunit>

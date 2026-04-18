@@ -35,7 +35,7 @@ test.describe('Login by role', () => {
     test(`${config.username} logs in and lands on ${config.expectedPath}`, async ({ page }) => {
       await page.goto(`${BASE_URL}/login`)
 
-      await expect(page.getByText('SmartPark')).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'SmartPark', level: 1 }).first()).toBeVisible()
 
       await page.getByLabel('Username').fill(config.username)
       await page.getByRole('textbox', { name: 'Password' }).fill(config.password)

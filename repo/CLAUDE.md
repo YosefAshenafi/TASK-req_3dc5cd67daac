@@ -47,7 +47,7 @@ Tests are written during Phases 1–11 but only evaluated together in Phase 12. 
 docker compose --profile test run --rm test-runner php artisan test --testsuite=Unit
 
 # Backend API (HTTP contract) tests — uses smartpark_test DB, refreshed per run
-docker compose --profile test run --rm test-runner php artisan test --testsuite=Api
+docker compose --profile test run --rm test-runner php artisan test --testsuite=Feature
 
 # Single backend test file
 docker compose --profile test run --rm test-runner php artisan test --filter=EncryptedFieldCastTest

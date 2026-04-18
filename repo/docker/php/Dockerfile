@@ -1,7 +1,7 @@
 FROM php:8.3-fpm-alpine
 
 RUN apk add --no-cache \
-        bash git curl icu-dev oniguruma-dev libzip-dev libpng-dev libjpeg-turbo-dev \
+        bash git curl su-exec icu-dev oniguruma-dev libzip-dev libpng-dev libjpeg-turbo-dev \
         freetype-dev ffmpeg mysql-client sqlite sqlite-dev autoconf g++ make \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_mysql mbstring intl zip gd bcmath opcache pcntl \
@@ -17,13 +17,17 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/php/php-fpm.d/zz-smartpark.conf /usr/local/etc/php-fpm.d/zz-smartpark.conf
 
 RUN addgroup -g 1000 www && adduser -D -u 1000 -G www www \
     && mkdir -p /var/spool/smartpark /run/secrets \
+    && touch /var/log/php-fpm.log /var/log/php-fpm-access.log \
+    && chown www:www /var/log/php-fpm.log /var/log/php-fpm-access.log \
     && chown -R www:www /var/www/html /var/spool/smartpark \
     && chmod +x /usr/local/bin/entrypoint.sh
 
-USER www
+# Entrypoint starts as root so it can chown bind-mounted ./backend (often root-owned in CI),
+# then drops to www via su-exec. Do not USER www here.
 
 EXPOSE 9000
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

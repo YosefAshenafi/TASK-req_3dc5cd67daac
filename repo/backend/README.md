@@ -47,7 +47,7 @@ docker compose --profile test run --rm test-runner php artisan test --testsuite=
 docker compose --profile test run --rm test-runner php artisan test --testsuite=Feature
 
 # Alias for feature tests (Api testsuite maps to tests/Feature/)
-docker compose --profile test run --rm test-runner php artisan test --testsuite=Api
+docker compose --profile test run --rm test-runner php artisan test --testsuite=Feature
 
 # Single test file
 docker compose --profile test run --rm test-runner php artisan test --filter=EncryptedFieldCastTest

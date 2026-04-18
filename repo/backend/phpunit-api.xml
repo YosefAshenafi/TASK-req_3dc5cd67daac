@@ -1,28 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+    phpunit-api.xml — coverage config for the API (Feature/HTTP) suite only.
+
+    Feature tests exercise the HTTP entry points (routes -> middleware -> controllers).
+    Scope line coverage to app/Http so the percentage reflects the layer these tests own,
+    rather than being diluted by Services/Models/Jobs that are covered by the Unit suite.
+-->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
 >
     <testsuites>
-        <testsuite name="Unit">
-            <directory>tests/Unit</directory>
-        </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
     </testsuites>
     <source>
         <include>
-            <directory>app</directory>
+            <directory>app/Http</directory>
         </include>
-        <!-- Long-running daemon with infinite loop + pcntl — not unit-tested; excluded from line % -->
-        <exclude>
-            <file>app/Console/Commands/GatewayRun.php</file>
-        </exclude>
     </source>
     <php>
-        <!-- 32-byte key for AES-256-CBC (must match docker-compose test-runner default) -->
         <env name="APP_KEY" value="base64:QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE="/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>

@@ -225,3 +225,9 @@ export interface InitiateReplayRequest {
   until_sequence_no?: number
   reason?: string
 }
+
+export interface AppSettings {
+  site_name: string
+  site_tagline: string
+  available_tags: string[]
+}

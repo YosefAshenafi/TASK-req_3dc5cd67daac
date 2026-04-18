@@ -11,21 +11,23 @@ async function loginAsUser(page: any, username = 'user1') {
 }
 
 test.describe('Share and redeem playlist', () => {
-  test('playlists page has Redeem Code button', async ({ page }) => {
+  test('playlists page has Redeem button', async ({ page }) => {
     await loginAsUser(page)
     await page.goto(`${BASE_URL}/playlists`)
-    await expect(page.getByRole('button', { name: 'Redeem Code' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Redeem' })).toBeVisible()
   })
 
   test('redeem dialog opens with keypad', async ({ page }) => {
     await loginAsUser(page)
     await page.goto(`${BASE_URL}/playlists`)
-    await page.getByRole('button', { name: 'Redeem Code' }).click()
+    await page.getByRole('button', { name: 'Redeem' }).click()
 
-    await expect(page.getByRole('heading', { name: 'Redeem Playlist Code' })).toBeVisible()
-    // Check for keypad buttons — 'A' is a single-char keypad key (exact match avoids nav links)
-    await expect(page.getByRole('button', { name: 'A', exact: true }).first()).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Redeem', exact: true })).toBeVisible()
+    // Scope to the dialog so "Redeem" inside the modal doesn't collide with the
+    // page-level "Redeem" button that opens it.
+    const dialog = page.getByRole('dialog', { name: 'Redeem Playlist Code' })
+    await expect(dialog.getByRole('heading', { name: 'Redeem Playlist Code' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'A', exact: true }).first()).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Redeem', exact: true })).toBeVisible()
   })
 
   test('share dialog can be opened from playlist', async ({ page }) => {
@@ -33,9 +35,9 @@ test.describe('Share and redeem playlist', () => {
     await page.goto(`${BASE_URL}/playlists`)
 
     // Create a playlist
-    await page.getByRole('button', { name: '+ New Playlist' }).click()
+    await page.getByRole('button', { name: 'New Playlist' }).click()
     const name = `Share Test ${Date.now()}`
-    await page.getByPlaceholder('Playlist name…').fill(name)
+    await page.getByPlaceholder('Enter playlist name…').fill(name)
     await page.getByRole('button', { name: 'Create' }).click()
     await page.waitForTimeout(500)
 
@@ -63,7 +65,7 @@ test.describe('Share and redeem playlist', () => {
   test('redeem dialog stays open and shows feedback after submitting invalid code', async ({ page }) => {
     await loginAsUser(page)
     await page.goto(`${BASE_URL}/playlists`)
-    await page.getByRole('button', { name: 'Redeem Code' }).click()
+    await page.getByRole('button', { name: 'Redeem' }).click()
 
     // Type 8 invalid characters using keypad
     for (let i = 0; i < 8; i++) {
@@ -84,10 +86,12 @@ test.describe('Share and redeem playlist', () => {
     await page.waitForTimeout(1500)
 
     // After submitting an invalid code the dialog must not navigate away —
-    // the heading or the Redeem button must still be present.
-    const dialogStillOpen =
-      (await page.getByRole('heading', { name: 'Redeem Playlist Code' }).isVisible().catch(() => false)) ||
-      (await page.getByRole('button', { name: 'Redeem', exact: true }).isVisible().catch(() => false))
+    // the dialog's heading must still be present.
+    const dialog = page.getByRole('dialog', { name: 'Redeem Playlist Code' })
+    const dialogStillOpen = await dialog
+      .getByRole('heading', { name: 'Redeem Playlist Code' })
+      .isVisible()
+      .catch(() => false)
     expect(dialogStillOpen).toBe(true)
   })
 })

@@ -70,7 +70,7 @@ async function handleSubmit() {
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
     @click.self="emit('close')"
   >
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+    <div role="dialog" aria-modal="true" aria-label="Redeem Playlist Code" class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
       <h2 class="text-lg font-bold text-gray-900 mb-4">Redeem Playlist Code</h2>
 
       <!-- Code display -->

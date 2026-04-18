@@ -67,10 +67,7 @@ test('MediaValidator accepts valid JPEG', function () {
 test('MediaValidator rejects files over size cap', function () {
     $validator = new MediaValidator();
 
-    // Create a 26MB fake JPEG (over 25MB image cap)
-    $tempFile = tempnam(sys_get_temp_dir(), 'test');
-    $bytes    = "\xFF\xD8\xFF\xE0" . str_repeat('x', 26 * 1024 * 1024);
-    file_put_contents($tempFile, $bytes);
+    $tempFile = write_oversized_jpeg_temp_path();
 
     $result = $validator->validate($tempFile, 'image/jpeg');
 

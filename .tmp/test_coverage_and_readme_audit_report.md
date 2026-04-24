@@ -1,12 +1,15 @@
 # Test Coverage Audit
 
-## Scope and Mode
-- Audit mode: static inspection only (no code/test execution).
-- Sources inspected: `repo/backend/routes/api.php`, `repo/backend/bootstrap/app.php`, `repo/backend/tests/**`, `repo/frontend/src/tests/unit/**`, `repo/frontend/e2e/**`, `repo/run_tests.sh`, `repo/README.md`.
-- Project type declaration: `fullstack` (from `repo/README.md:3`).
+## Scope and Method
+- Mode: static inspection only (no execution).
+- Inspected areas: `repo/backend/routes/api.php`, `repo/backend/tests/**`, `repo/frontend/src/tests/**`, `repo/frontend/e2e/**`, `repo/README.md`, `repo/run_tests.sh`, minimal config files.
+
+## Project Type Detection
+- Declared type in README: **fullstack** (`repo/README.md`: `Project type: fullstack`).
+- Inference result: not needed.
 
 ## Backend Endpoint Inventory
-Resolved API prefix from Laravel routing configuration (`repo/backend/bootstrap/app.php:8-10`) and route declarations (`repo/backend/routes/api.php`).
+Resolved with Laravel API prefix `/api` from `repo/backend/bootstrap/app.php` + `repo/backend/routes/api.php`.
 
 1. `GET /api/health`
 2. `POST /api/auth/login`
@@ -16,245 +19,274 @@ Resolved API prefix from Laravel routing configuration (`repo/backend/bootstrap/
 6. `GET /api/auth/me`
 7. `GET /api/search`
 8. `GET /api/assets`
-9. `GET /api/assets/:id`
-10. `POST /api/assets/:id/play`
+9. `GET /api/assets/{id}`
+10. `POST /api/assets/{id}/play`
 11. `GET /api/favorites`
-12. `PUT /api/favorites/:asset_id`
-13. `DELETE /api/favorites/:asset_id`
+12. `PUT /api/favorites/{asset_id}`
+13. `DELETE /api/favorites/{asset_id}`
 14. `POST /api/playlists/redeem`
-15. `DELETE /api/playlists/shares/:id`
+15. `DELETE /api/playlists/shares/{id}`
 16. `GET /api/playlists`
 17. `POST /api/playlists`
-18. `GET /api/playlists/:id`
-19. `PUT /api/playlists/:id`
-20. `PATCH /api/playlists/:id`
-21. `DELETE /api/playlists/:id`
-22. `POST /api/playlists/:id/share`
-23. `POST /api/playlists/:id/items`
-24. `DELETE /api/playlists/:id/items/:itemId`
-25. `PUT /api/playlists/:id/items/order`
+18. `GET /api/playlists/{id}`
+19. `PUT /api/playlists/{id}`
+20. `PATCH /api/playlists/{id}`
+21. `DELETE /api/playlists/{id}`
+22. `POST /api/playlists/{id}/share`
+23. `POST /api/playlists/{id}/items`
+24. `DELETE /api/playlists/{id}/items/{itemId}`
+25. `PUT /api/playlists/{id}/items/order`
 26. `GET /api/history`
 27. `GET /api/history/sessions`
 28. `GET /api/now-playing`
 29. `GET /api/recommendations`
 30. `POST /api/assets`
-31. `DELETE /api/assets/:id`
-32. `POST /api/admin/assets/:id/replace`
+31. `DELETE /api/assets/{id}`
+32. `POST /api/admin/assets/{id}/replace`
 33. `GET /api/users`
 34. `POST /api/users`
-35. `GET /api/users/:id`
-36. `PUT /api/users/:id`
-37. `PATCH /api/users/:id`
-38. `DELETE /api/users/:id`
-39. `PATCH /api/users/:id/freeze`
-40. `PATCH /api/users/:id/unfreeze`
-41. `PATCH /api/users/:id/blacklist`
+35. `GET /api/users/{id}`
+36. `PUT /api/users/{id}`
+37. `PATCH /api/users/{id}`
+38. `DELETE /api/users/{id}`
+39. `PATCH /api/users/{id}/freeze`
+40. `PATCH /api/users/{id}/unfreeze`
+41. `PATCH /api/users/{id}/blacklist`
 42. `GET /api/monitoring/status`
-43. `POST /api/monitoring/feature-flags/:flag/reset`
+43. `POST /api/monitoring/feature-flags/{flag}/reset`
 44. `PUT /api/settings`
 45. `POST /api/devices/events`
 46. `GET /api/devices`
-47. `GET /api/devices/:id`
-48. `GET /api/devices/:id/events`
-49. `GET /api/devices/:id/replay/audits`
-50. `POST /api/devices/:id/replay`
+47. `GET /api/devices/{id}`
+48. `GET /api/devices/{id}/events`
+49. `GET /api/devices/{id}/replay/audits`
+50. `POST /api/devices/{id}/replay`
 
 ## API Test Mapping Table
+
 | Endpoint | Covered | Test type | Test files | Evidence |
 |---|---|---|---|---|
-| `GET /api/health` | yes | true no-mock HTTP | `backend/tests/Feature/HealthTest.php` | `HealthTest.php:4` |
-| `POST /api/auth/login` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/LoginTest.php` | `LoginTest.php:16` |
-| `GET /api/settings` | yes | true no-mock HTTP | `backend/tests/Feature/Settings/SettingsEndpointTest.php` | `SettingsEndpointTest.php:7` |
-| `POST /api/gateway/events` | yes | true no-mock HTTP | `backend/tests/Feature/Devices/GatewayAuthTest.php` | `GatewayAuthTest.php:22` |
-| `POST /api/auth/logout` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/LoginTest.php` | `LoginTest.php:100` |
-| `GET /api/auth/me` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/LoginTest.php` | `LoginTest.php:86` |
-| `GET /api/search` | yes | true no-mock HTTP | `backend/tests/Feature/Search/SearchRankingTest.php` | `SearchRankingTest.php:18` |
-| `GET /api/assets` | yes | true no-mock HTTP | `backend/tests/Feature/Security/UnpublishedAssetAccessTest.php` | `UnpublishedAssetAccessTest.php:104` |
-| `GET /api/assets/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Media/AssetVisibilityTest.php` | `AssetVisibilityTest.php:12` |
-| `POST /api/assets/:id/play` | yes | true no-mock HTTP | `backend/tests/Feature/History/SessionHistoryTest.php` | `SessionHistoryTest.php:13` |
-| `GET /api/favorites` | yes | true no-mock HTTP | `backend/tests/Feature/Security/CrossUserIsolationTest.php` | `CrossUserIsolationTest.php:18` |
-| `PUT /api/favorites/:asset_id` | yes | true no-mock HTTP | `backend/tests/Feature/Security/UnpublishedAssetAccessTest.php` | `UnpublishedAssetAccessTest.php:19` |
-| `DELETE /api/favorites/:asset_id` | yes | true no-mock HTTP | `backend/tests/Feature/Security/CrossUserIsolationTest.php` | `CrossUserIsolationTest.php:78` |
-| `POST /api/playlists/redeem` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/ShareRedeemTest.php` | `ShareRedeemTest.php:60` |
-| `DELETE /api/playlists/shares/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/ShareRedeemTest.php` | `ShareRedeemTest.php:145` |
-| `GET /api/playlists` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:26` |
-| `POST /api/playlists` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:12` |
-| `GET /api/playlists/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:43` |
-| `PUT /api/playlists/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:55` |
-| `PATCH /api/playlists/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:65` |
-| `DELETE /api/playlists/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:75` |
-| `POST /api/playlists/:id/share` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/ShareRedeemTest.php` | `ShareRedeemTest.php:20` |
-| `POST /api/playlists/:id/items` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:97` |
-| `DELETE /api/playlists/:id/items/:itemId` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:115` |
-| `PUT /api/playlists/:id/items/order` | yes | true no-mock HTTP | `backend/tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:131` |
-| `GET /api/history` | yes | true no-mock HTTP | `backend/tests/Feature/History/SessionHistoryTest.php` | `SessionHistoryTest.php:39` |
-| `GET /api/history/sessions` | yes | true no-mock HTTP | `backend/tests/Feature/History/SessionHistoryTest.php` | `SessionHistoryTest.php:79` |
-| `GET /api/now-playing` | yes | true no-mock HTTP | `backend/tests/Feature/History/SessionHistoryTest.php` | `SessionHistoryTest.php:146` |
-| `GET /api/recommendations` | yes | true no-mock HTTP | `backend/tests/Feature/Search/RecommendationEndpointTest.php` | `RecommendationEndpointTest.php:35` |
-| `POST /api/assets` | yes | true no-mock HTTP + HTTP with mocking | `backend/tests/Feature/Media/AssetNoMockHttpCoverageTest.php`, `backend/tests/Feature/Media/AssetUploadTest.php` | `AssetNoMockHttpCoverageTest.php:21`; `AssetUploadTest.php:46` |
-| `DELETE /api/assets/:id` | yes | true no-mock HTTP + HTTP with mocking | `backend/tests/Feature/Media/AssetNoMockHttpCoverageTest.php`, `backend/tests/Feature/Media/AssetDeleteReferencedTest.php` | `AssetNoMockHttpCoverageTest.php:46`; `AssetDeleteReferencedTest.php:20` |
-| `POST /api/admin/assets/:id/replace` | yes | true no-mock HTTP + HTTP with mocking | `backend/tests/Feature/Media/AssetNoMockHttpCoverageTest.php`, `backend/tests/Feature/Media/AssetReplaceTest.php` | `AssetNoMockHttpCoverageTest.php:62`; `AssetReplaceTest.php:48` |
-| `GET /api/users` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/LoginTest.php` | `LoginTest.php:111` |
-| `POST /api/users` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/UserManagementTest.php` | `UserManagementTest.php:9` |
-| `GET /api/users/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/UserShowUpdateTest.php` | `UserShowUpdateTest.php:10` |
-| `PUT /api/users/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/UserShowUpdateTest.php` | `UserShowUpdateTest.php:21` |
-| `PATCH /api/users/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/UserShowUpdateTest.php` | `UserShowUpdateTest.php:35` |
-| `DELETE /api/users/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/UserManagementTest.php` | `UserManagementTest.php:70` |
-| `PATCH /api/users/:id/freeze` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/UserManagementTest.php` | `UserManagementTest.php:25` |
-| `PATCH /api/users/:id/unfreeze` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/UserManagementTest.php` | `UserManagementTest.php:44` |
-| `PATCH /api/users/:id/blacklist` | yes | true no-mock HTTP | `backend/tests/Feature/Auth/UserManagementTest.php` | `UserManagementTest.php:56` |
-| `GET /api/monitoring/status` | yes | true no-mock HTTP | `backend/tests/Feature/Monitoring/DegradationFlagTest.php` | `DegradationFlagTest.php:17` |
-| `POST /api/monitoring/feature-flags/:flag/reset` | yes | true no-mock HTTP | `backend/tests/Feature/Monitoring/DegradationFlagTest.php` | `DegradationFlagTest.php:83` |
-| `PUT /api/settings` | yes | true no-mock HTTP | `backend/tests/Feature/Settings/SettingsEndpointTest.php` | `SettingsEndpointTest.php:41` |
-| `POST /api/devices/events` | yes | true no-mock HTTP | `backend/tests/Feature/Devices/IngestionDedupTest.php` | `IngestionDedupTest.php:33` |
-| `GET /api/devices` | yes | true no-mock HTTP | `backend/tests/Feature/Devices/IngestionDedupTest.php` | `IngestionDedupTest.php:113` |
-| `GET /api/devices/:id` | yes | true no-mock HTTP | `backend/tests/Feature/Devices/IngestionDedupTest.php` | `IngestionDedupTest.php:160` |
-| `GET /api/devices/:id/events` | yes | true no-mock HTTP | `backend/tests/Feature/Devices/EventsListingTest.php` | `EventsListingTest.php:42` |
-| `GET /api/devices/:id/replay/audits` | yes | true no-mock HTTP | `backend/tests/Feature/Devices/ReplayAuditTest.php` | `ReplayAuditTest.php:47` |
-| `POST /api/devices/:id/replay` | yes | true no-mock HTTP | `backend/tests/Feature/Devices/ReplayAuditTest.php` | `ReplayAuditTest.php:15` |
+| `GET /api/health` | yes | true no-mock HTTP | `tests/Feature/HealthTest.php` | `HealthTest.php:3` `test('health endpoint returns ok'...)` |
+| `POST /api/auth/login` | yes | true no-mock HTTP | `tests/Feature/Auth/LoginTest.php`, `tests/Feature/Security/RateLimitTest.php` | `LoginTest.php:17`, `RateLimitTest.php:29` |
+| `GET /api/settings` | yes | true no-mock HTTP | `tests/Feature/Settings/SettingsEndpointTest.php` | `SettingsEndpointTest.php:6` |
+| `POST /api/gateway/events` | yes | true no-mock HTTP | `tests/Feature/Devices/GatewayAuthTest.php` | `GatewayAuthTest.php:18` |
+| `POST /api/auth/logout` | yes | true no-mock HTTP | `tests/Feature/Auth/LoginTest.php`, `tests/Feature/Security/AccountStatusTest.php` | `LoginTest.php:169`, `AccountStatusTest.php:52` |
+| `GET /api/auth/me` | yes | true no-mock HTTP | `tests/Feature/Auth/LoginTest.php`, `tests/Feature/Security/AccountStatusTest.php` | `LoginTest.php:147`, `AccountStatusTest.php:13` |
+| `GET /api/search` | yes | true no-mock HTTP | `tests/Feature/Search/SearchRankingTest.php`, `tests/Feature/Media/AssetDurationTest.php` | `SearchRankingTest.php:8` |
+| `GET /api/assets` | yes | true no-mock HTTP | `tests/Feature/Security/UnpublishedAssetAccessTest.php` | `UnpublishedAssetAccessTest.php:96` |
+| `GET /api/assets/{id}` | yes | HTTP with mocking | `tests/Feature/Media/AssetUploadTest.php`, `tests/Feature/Media/AssetVisibilityTest.php`, `tests/Feature/Contracts/ApiContractTest.php` | `AssetUploadTest.php:337`; storage provider faked in `AssetUploadTest.php:19` (`Storage::fake`) |
+| `POST /api/assets/{id}/play` | yes | true no-mock HTTP | `tests/Feature/History/SessionHistoryTest.php`, `tests/Feature/Contracts/ApiContractTest.php` | `SessionHistoryTest.php:7` |
+| `GET /api/favorites` | yes | true no-mock HTTP | `tests/Feature/Security/CrossUserIsolationTest.php`, `tests/Feature/Security/UnpublishedAssetAccessTest.php` | `CrossUserIsolationTest.php:10` |
+| `PUT /api/favorites/{asset_id}` | yes | true no-mock HTTP | `tests/Feature/Security/UnpublishedAssetAccessTest.php` | `UnpublishedAssetAccessTest.php:14` |
+| `DELETE /api/favorites/{asset_id}` | yes | true no-mock HTTP | `tests/Feature/Security/CrossUserIsolationTest.php` | `CrossUserIsolationTest.php:71` |
+| `POST /api/playlists/redeem` | yes | true no-mock HTTP | `tests/Feature/Playlists/ShareRedeemTest.php` | `ShareRedeemTest.php:45` |
+| `DELETE /api/playlists/shares/{id}` | yes | true no-mock HTTP | `tests/Feature/Playlists/ShareRedeemTest.php`, `tests/Feature/Security/CrossUserIsolationTest.php` | `ShareRedeemTest.php:136` |
+| `GET /api/playlists` | yes | true no-mock HTTP | `tests/Feature/Playlists/PlaylistCrudTest.php`, `tests/Feature/Contracts/ApiContractTest.php` | `PlaylistCrudTest.php:20` |
+| `POST /api/playlists` | yes | true no-mock HTTP | `tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:8` |
+| `GET /api/playlists/{id}` | yes | true no-mock HTTP | `tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:31` |
+| `PUT /api/playlists/{id}` | yes | true no-mock HTTP | `tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:50` |
+| `PATCH /api/playlists/{id}` | yes | true no-mock HTTP | `tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:60` |
+| `DELETE /api/playlists/{id}` | yes | true no-mock HTTP | `tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:70` |
+| `POST /api/playlists/{id}/share` | yes | true no-mock HTTP | `tests/Feature/Playlists/ShareRedeemTest.php`, `tests/Feature/Security/RateLimitTest.php` | `ShareRedeemTest.php:15` |
+| `POST /api/playlists/{id}/items` | yes | true no-mock HTTP | `tests/Feature/Playlists/PlaylistCrudTest.php`, `tests/Feature/Security/UnpublishedAssetAccessTest.php` | `PlaylistCrudTest.php:91` |
+| `DELETE /api/playlists/{id}/items/{itemId}` | yes | true no-mock HTTP | `tests/Feature/Playlists/PlaylistCrudTest.php` | `PlaylistCrudTest.php:108` |
+| `PUT /api/playlists/{id}/items/order` | yes | true no-mock HTTP | `tests/Feature/Playlists/PlaylistCrudTest.php`, `tests/Feature/Contracts/ApiContractTest.php` | `PlaylistCrudTest.php:121` |
+| `GET /api/history` | yes | true no-mock HTTP | `tests/Feature/History/SessionHistoryTest.php`, `tests/Feature/Security/CrossUserIsolationTest.php` | `SessionHistoryTest.php:26` |
+| `GET /api/history/sessions` | yes | true no-mock HTTP | `tests/Feature/History/SessionHistoryTest.php` | `SessionHistoryTest.php:48` |
+| `GET /api/now-playing` | yes | true no-mock HTTP | `tests/Feature/History/SessionHistoryTest.php` | `SessionHistoryTest.php:134` |
+| `GET /api/recommendations` | yes | true no-mock HTTP | `tests/Feature/Search/RecommendationEndpointTest.php` | `RecommendationEndpointTest.php:9` |
+| `POST /api/assets` | yes | true no-mock HTTP + HTTP with mocking | `tests/Feature/Media/AssetNoMockHttpCoverageTest.php`, `tests/Feature/Media/AssetUploadTest.php`, `tests/Feature/Contracts/ApiContractTest.php` | `AssetNoMockHttpCoverageTest.php:17`; mocked variant uses `Storage::fake` in `AssetUploadTest.php:19` |
+| `DELETE /api/assets/{id}` | yes | true no-mock HTTP + HTTP with mocking | `tests/Feature/Media/AssetNoMockHttpCoverageTest.php`, `tests/Feature/Media/AssetDeleteReferencedTest.php` | `AssetNoMockHttpCoverageTest.php:38`; mocked variant `AssetDeleteReferencedTest.php:15` |
+| `POST /api/admin/assets/{id}/replace` | yes | true no-mock HTTP + HTTP with mocking | `tests/Feature/Media/AssetNoMockHttpCoverageTest.php`, `tests/Feature/Media/AssetReplaceTest.php` | `AssetNoMockHttpCoverageTest.php:53`; mocked variant `AssetReplaceTest.php:17` |
+| `GET /api/users` | yes | true no-mock HTTP | `tests/Feature/Auth/LoginTest.php` | `LoginTest.php:204` |
+| `POST /api/users` | yes | true no-mock HTTP | `tests/Feature/Auth/UserManagementTest.php` | `UserManagementTest.php:5` |
+| `GET /api/users/{id}` | yes | true no-mock HTTP | `tests/Feature/Auth/UserShowUpdateTest.php` | `UserShowUpdateTest.php:5` |
+| `PUT /api/users/{id}` | yes | true no-mock HTTP | `tests/Feature/Auth/UserShowUpdateTest.php` | `UserShowUpdateTest.php:16` |
+| `PATCH /api/users/{id}` | yes | true no-mock HTTP | `tests/Feature/Auth/UserShowUpdateTest.php` | `UserShowUpdateTest.php:30` |
+| `DELETE /api/users/{id}` | yes | true no-mock HTTP | `tests/Feature/Auth/UserManagementTest.php` | `UserManagementTest.php:65` |
+| `PATCH /api/users/{id}/freeze` | yes | true no-mock HTTP | `tests/Feature/Auth/UserManagementTest.php`, `tests/Feature/Contracts/ApiContractTest.php` | `UserManagementTest.php:20` |
+| `PATCH /api/users/{id}/unfreeze` | yes | true no-mock HTTP | `tests/Feature/Auth/UserManagementTest.php`, `tests/Feature/Contracts/ApiContractTest.php` | `UserManagementTest.php:39` |
+| `PATCH /api/users/{id}/blacklist` | yes | true no-mock HTTP | `tests/Feature/Auth/UserManagementTest.php`, `tests/Feature/Contracts/ApiContractTest.php` | `UserManagementTest.php:51` |
+| `GET /api/monitoring/status` | yes | true no-mock HTTP | `tests/Feature/Monitoring/DegradationFlagTest.php` | `DegradationFlagTest.php:8` |
+| `POST /api/monitoring/feature-flags/{flag}/reset` | yes | true no-mock HTTP | `tests/Feature/Monitoring/DegradationFlagTest.php` | `DegradationFlagTest.php:71` |
+| `PUT /api/settings` | yes | true no-mock HTTP | `tests/Feature/Settings/SettingsEndpointTest.php` | `SettingsEndpointTest.php:30` |
+| `POST /api/devices/events` | yes | true no-mock HTTP | `tests/Feature/Devices/IngestionDedupTest.php`, `tests/Feature/Devices/AuditPersistenceTest.php` | `IngestionDedupTest.php:27` |
+| `GET /api/devices` | yes | true no-mock HTTP | `tests/Feature/Devices/IngestionDedupTest.php` | `IngestionDedupTest.php:110` |
+| `GET /api/devices/{id}` | yes | true no-mock HTTP | `tests/Feature/Devices/IngestionDedupTest.php` | `IngestionDedupTest.php:155` |
+| `GET /api/devices/{id}/events` | yes | true no-mock HTTP | `tests/Feature/Devices/IngestionDedupTest.php`, `tests/Feature/Devices/EventsListingTest.php` | `EventsListingTest.php:7` |
+| `GET /api/devices/{id}/replay/audits` | yes | true no-mock HTTP | `tests/Feature/Devices/ReplayAuditTest.php` | `ReplayAuditTest.php:32` |
+| `POST /api/devices/{id}/replay` | yes | true no-mock HTTP | `tests/Feature/Devices/ReplayAuditTest.php`, `tests/Feature/Contracts/ApiContractTest.php` | `ReplayAuditTest.php:9` |
 
 ## API Test Classification
-1. True No-Mock HTTP
-- Evidence: most feature tests directly call HTTP endpoints with `getJson/postJson/...` and no `Queue::fake`, DI override, or service stubs in the file.
-- Representative files: `backend/tests/Feature/Auth/LoginTest.php`, `backend/tests/Feature/Playlists/PlaylistCrudTest.php`, `backend/tests/Feature/Devices/IngestionDedupTest.php`, `backend/tests/Feature/Monitoring/DegradationFlagTest.php`.
 
-2. HTTP with Mocking
-- `backend/tests/Feature/Media/AssetUploadTest.php` (`Queue::fake` at line 21).
-- `backend/tests/Feature/Media/AssetDurationTest.php` (`Queue::fake` at line 13; `app()->bind(MediaProbe::class, ...)` at line 22).
-- `backend/tests/Feature/Media/AssetReplaceTest.php` (`Queue::fake` at line 19; `app()->bind(MediaProbe::class, ...)` at line 31).
-- `backend/tests/Feature/Media/AssetDeleteReferencedTest.php` (`Queue::fake` at line 12).
-- `backend/tests/Feature/Contracts/ApiContractTest.php` (`Queue::fake` at line 18).
+### 1) True No-Mock HTTP
+Evidence pattern: HTTP calls via `$this->getJson/postJson/...` and no route-path mocking in file.
+- Representative files: `tests/Feature/Auth/*.php`, `tests/Feature/Devices/*.php`, `tests/Feature/Playlists/*.php`, `tests/Feature/Search/*.php`, `tests/Feature/Settings/SettingsEndpointTest.php`, `tests/Feature/History/SessionHistoryTest.php`, `tests/Feature/Security/AccountStatusTest.php`, `tests/Feature/Security/CrossUserIsolationTest.php`, `tests/Feature/Security/RateLimitTest.php`, `tests/Feature/Security/UnpublishedAssetAccessTest.php`, `tests/Feature/Media/AssetNoMockHttpCoverageTest.php`.
 
-3. Non-HTTP (unit/integration without HTTP)
-- Entire `backend/tests/Unit/**` set (14 files), e.g. middleware/service/model/command tests.
+### 2) HTTP with Mocking
+- `tests/Feature/Media/AssetUploadTest.php` (`Storage::fake('local')`, `Storage::fake('public')` at lines 19-20)
+- `tests/Feature/Media/AssetDeleteReferencedTest.php` (`Storage::fake('local')` at line 15)
+- `tests/Feature/Media/AssetReplaceTest.php` (`Storage::fake('local')`, `Storage::fake('public')` at lines 17-18)
+- `tests/Feature/Media/AssetDurationTest.php` (`Storage::fake('local')`, `Storage::fake('public')` at lines 15-16)
+- `tests/Feature/Contracts/ApiContractTest.php` (`Storage::fake('local')`, `Storage::fake('public')` at lines 17-18)
+
+### 3) Non-HTTP (unit/integration without HTTP)
+- `tests/Feature/Security/SeederNoPasswordLeakTest.php` (direct `DatabaseSeeder()->run()`, no HTTP request).
+- `tests/Feature/Monitoring/DegradationFlagTest.php`:
+  - `test('MetricsRecorder computes error rate from recorded status codes'...)` (direct service/cache usage)
+  - `test('circuit breaker trips when MetricsRecorder p95 exceeds threshold'...)` (direct command invocation)
 
 ## Mock Detection
-- `Queue::fake` in feature tests:
-  - `backend/tests/Feature/Media/AssetUploadTest.php:21`
-  - `backend/tests/Feature/Media/AssetDurationTest.php:13`
-  - `backend/tests/Feature/Media/AssetReplaceTest.php:19`
-  - `backend/tests/Feature/Media/AssetDeleteReferencedTest.php:12`
-  - `backend/tests/Feature/Contracts/ApiContractTest.php:18`
-- DI service override/stub in feature tests:
-  - `backend/tests/Feature/Media/AssetDurationTest.php:22` (`MediaProbe` binding override)
-  - `backend/tests/Feature/Media/AssetReplaceTest.php:31` (`MediaProbe` binding override)
-- Unit-level mocking:
-  - `backend/tests/Unit/Console/MonitoringSampleCommandTest.php:14-16` (`$this->mock(MetricsRecorder::class)` + `shouldReceive`)
+- Mock/provider override in API-adjacent feature tests:
+  - `Storage::fake('local'/'public')` in files listed above (media/contract feature tests).
+- Unit-test mocks (non-API classification but relevant over-mocking visibility):
+  - `tests/Unit/Console/MonitoringSampleCommandTest.php` uses `$this->mock(MetricsRecorder::class)` and `shouldReceive(...)`.
+- Frontend unit tests intentionally use `vi.mock(...)` broadly (e.g., `frontend/src/tests/unit/login.view.test.ts`, `asset-tile.component.test.ts`, `player.store.test.ts`).
 
 ## Coverage Summary
-- Total endpoints: `50`
-- Endpoints with HTTP tests: `50`
-- Endpoints with true no-mock HTTP coverage: `50`
-- HTTP coverage: `100%`
-- True API coverage: `100%`
+- Total endpoints: **50**
+- Endpoints with HTTP tests: **50**
+- Endpoints with true no-mock HTTP tests: **49**
+- HTTP coverage: **100.00%**
+- True API coverage: **98.00%**
+
+Rationale for 49/50 true no-mock: `GET /api/assets/{id}` evidence currently comes from files that fake storage provider (`Storage::fake(...)`).
 
 ## Unit Test Summary
+
 ### Backend Unit Tests
-- Files: `14` under `backend/tests/Unit/**`.
-- Covered backend module types:
-  - Middleware: `RoleMiddleware`, `EnforceAccountStatus`, `GatewayTokenMiddleware`, `RecordApiMetrics`
-  - Services/Casts/Utility: `MediaValidator`, `MediaProbe`, `MetricsRecorder`, `EncryptedField`
-  - Models/Jobs/Logging/Console commands: model relationships, jobs, sensitive-field logging mask, gateway dead-letter/monitoring commands
-- Important backend modules not directly unit-tested (feature-tested only or not explicitly isolated):
-  - Controllers in `backend/app/Http/Controllers/**` (no direct unit tests)
-  - `RecommendationController` and `SearchController` internal ranking logic isolation (validated by feature tests, not isolated unit tests)
-  - `App\Providers\AppServiceProvider` boot behavior
+- Unit test files present:
+  - `tests/Unit/Console/*`, `tests/Unit/Middleware/*`, `tests/Unit/Services/*`, `tests/Unit/Jobs/*`, `tests/Unit/Logging/*`, `tests/Unit/Providers/*`, `tests/Unit/Models/*`, plus `EncryptedFieldCastTest.php`, `MediaProbeTest.php`, `MediaValidatorTest.php`, `Gateway/RetryClassifierTest.php`.
+- Modules covered:
+  - Controllers: indirectly via feature HTTP tests; no dedicated controller unit tests found.
+  - Services: `MediaProbe`, `MediaValidator`, `Monitoring/MetricsRecorder` covered.
+  - Repositories: no repository layer detected under `app/`.
+  - Auth/guards/middleware: `RoleMiddleware`, `EnforceAccountStatus`, `GatewayTokenMiddleware`, `RecordApiMetrics` covered.
+- Important backend modules not unit-tested directly:
+  - HTTP controllers under `app/Http/Controllers/*.php` (covered by feature tests but not unit-isolated).
+  - `AuthController` edge branches are primarily feature-tested, not unit-tested.
 
 ### Frontend Unit Tests (STRICT)
-- Frontend test files detected: `23` files under `frontend/src/tests/unit/**`.
-- Framework/tooling evidence:
-  - `vitest` config in `frontend/vitest.config.ts`
-  - `@vue/test-utils` mounting actual Vue components (e.g., `login.view.test.ts`, `library.view.test.ts`)
-- Components/modules covered (direct imports in tests):
-  - Views: `LoginView`, `LibraryView`, `SearchView`, `FavoritesView`, `NowPlayingView`, `PlaylistsView`, `PlaylistDetailView`, `DevicesView`, `DeviceDetailView`, `AdminUsersView`
-  - Components: `AssetTile`, `AddToPlaylistDialog`, `ShareDialog`, `RedeemDialog`, `AppLayout`
-  - Stores/services/router/composable: `auth`, `player`, `settings`, `ui`, `api` service, router helpers/orchestration, `useUnsavedGuard`
-- Important frontend modules not explicitly unit-tested:
-  - `frontend/src/views/admin/AdminView.vue`
-  - `frontend/src/views/admin/AdminSettingsView.vue`
-  - `frontend/src/views/admin/AdminMonitoringView.vue`
-  - `frontend/src/views/admin/AdminUploadsView.vue`
-  - `frontend/src/views/ForbiddenView.vue`
-- Mandatory verdict: **Frontend unit tests: PRESENT**
+- Frontend test files: **present** under `frontend/src/tests/unit/*.test.ts` (28 files).
+- Frameworks/tools detected:
+  - `vitest` (`frontend/package.json`, `vitest.config.ts`)
+  - `@vue/test-utils` (`frontend/package.json` + imports in test files)
+  - `jsdom` test environment (`frontend/vitest.config.ts`)
+- Components/modules covered (evidence from imports in test files):
+  - Views: `LoginView`, `LibraryView`, `SearchView`, `PlaylistsView`, `PlaylistDetailView`, `FavoritesView`, `NowPlayingView`, `ForbiddenView`, admin views, device views.
+  - Components: `AssetTile`, `AddToPlaylistDialog`, `ShareDialog`, `RedeemDialog`.
+  - Stores/composables/services/router helpers: `auth`, `player`, `settings`, `ui`, `useUnsavedGuard`, API service layer, router orchestration.
+- Important frontend modules not clearly unit-tested directly:
+  - Bootstrap shell files `frontend/src/main.ts`, `frontend/src/App.vue` (no direct unit spec found).
 
-### Cross-Layer Observation
-- Backend and frontend both have substantial automated tests (backend feature+unit, frontend unit+Playwright E2E).
-- Testing is not backend-only; coverage is comparatively balanced.
+**Frontend unit tests: PRESENT**
+
+Cross-layer observation:
+- Backend and frontend both have substantial automated tests.
+- Balance is acceptable; not backend-only.
 
 ## Tests Check
-- Observability quality:
-  - Strong in many contract/feature tests with explicit request payload and response shape assertions (e.g., `backend/tests/Feature/Contracts/ApiContractTest.php`, `backend/tests/Feature/Monitoring/DegradationFlagTest.php`).
-  - Weak in some authorization/status checks where only status code is asserted, with limited response-body assertion (e.g., `backend/tests/Feature/Auth/LoginTest.php:111`, `backend/tests/Feature/Security/AccountStatusTest.php:54-56`).
+- Observability (endpoint + input + response assertions): **mostly strong**.
+  - Strong examples: `Auth/LoginTest.php`, `Playlists/PlaylistCrudTest.php`, `Devices/ReplayAuditTest.php` with body and JSON shape assertions.
+  - Weak spots: some tests assert mainly status code in loops, e.g. `Security/AccountStatusTest.php` endpoint arrays at lines ~74 and ~92.
 - Sufficiency dimensions:
-  - Success paths: present across all major domains.
-  - Failure/validation: present (422/401/403/404/409/423, rate limit, unknown flag, missing fields).
-  - Auth/permissions: present (`role`/account-status scenarios, admin vs user vs technician).
-  - Edge cases: present in devices dedup/replay and media validation.
-  - Integration boundaries: partially compromised in media endpoints due queue/service fakes in multiple feature suites.
+  - Success paths: covered broadly.
+  - Failure/validation: covered broadly (401/403/404/409/422/429 patterns present).
+  - Edge cases: present (rate limits, replay/audit, duration filters, ownership/isolation).
+  - Auth/permissions: strongly covered.
+  - Integration boundaries: medium-strong; some media-path tests rely on `Storage::fake`.
+  - Assertions depth: generally meaningful, with a minority of status-only checks.
 - `run_tests.sh` check:
-  - Docker-based execution confirmed (`docker compose` for all suites) from `repo/run_tests.sh`.
-  - No local dependency requirement in this script.
+  - Docker-based execution confirmed (`docker compose ...` throughout `repo/run_tests.sh`).
+  - No host runtime/package install requirement in the script itself.
+
+## End-to-End Expectations (Fullstack)
+- Fullstack expectation: FE↔BE E2E should exist.
+- Evidence:
+  - Playwright specs present: `frontend/e2e/**/*.spec.ts`.
+  - Frontend Vite proxy targets backend API (`frontend/vite.config.ts`, `/api` -> `http://localhost:8090` by default).
+- Static limitation: execution not performed, so runtime fidelity cannot be confirmed in this audit.
 
 ## Test Coverage Score (0-100)
-`86/100`
+**91/100**
 
 ## Score Rationale
-- `+` Endpoint-to-HTTP mapping is complete (50/50).
-- `+` True no-mock HTTP evidence exists for each endpoint.
-- `+` Frontend unit tests are present and broad for fullstack requirements.
-- `-` Multiple feature suites use `Queue::fake` and DI override on core media flows, reducing execution-path realism.
-- `-` Some endpoint tests are assertion-light (status-only), reducing observability and contract confidence.
-- `-` Several important frontend admin views remain untested at unit level.
+- + Full endpoint HTTP coverage (50/50).
+- + Broad negative-path and permission testing.
+- + Strong frontend unit presence for fullstack requirement.
+- - One endpoint (`GET /api/assets/{id}`) lacks true no-mock evidence due storage provider fakes in observed tests.
+- - Some weak observability (status-only assertions).
 
 ## Key Gaps
-1. Media feature suites rely on fakes/stubs (`Queue::fake`, `MediaProbe` DI override), which weakens real-path confidence for asset-processing behavior.
-2. Assertion depth is uneven on some auth/permission endpoints (status-only checks).
-3. Missing frontend unit tests for key admin views and forbidden state view.
+1. `GET /api/assets/{id}` true no-mock HTTP evidence is missing (`Storage::fake` used in current covering tests).
+2. Several authorization tests rely on status-only assertions instead of response contract validation.
+3. Controller-specific unit isolation is limited (coverage is mostly via feature tests).
 
 ## Confidence & Assumptions
-- Confidence: **High** for endpoint inventory and method/path mapping, **Medium-High** for qualitative sufficiency scoring.
+- Confidence: **high** for route-to-test mapping and README hard-gate checks.
 - Assumptions:
-  - Endpoint inventory scope is API routes in `routes/api.php` with Laravel `/api` prefix.
-  - Laravel framework health endpoint `/up` was treated as framework-provided route, not part of app API inventory.
+  - `Route::apiResource` expands to standard Laravel API methods including both `PUT` and `PATCH` update routes.
+  - `/api` prefix is applied via Laravel routing bootstrap (`withRouting(api: ...)`).
 
-## Test Coverage Verdict
-- **PASS (strict static audit), with notable quality gaps on mock reliance and uneven assertion depth.**
+**Test Coverage Verdict: PARTIAL PASS** (high coverage with one strict true-no-mock gap).
 
 ---
 
 # README Audit
 
+## Target File
+- Located at `repo/README.md`: **present**.
+
+## Hard Gate Evaluation
+
+### Formatting
+- PASS: clear Markdown hierarchy, tables, command blocks, and structured sections.
+
+### Startup Instructions (fullstack requirement)
+- PASS: includes exact `docker-compose up` command under “Quick start — single command”.
+
+### Access Method
+- PASS: explicit URL and port provided (`http://localhost:8090`).
+
+### Verification Method
+- PASS: includes concrete verification flow:
+  - `curl http://localhost:8090/api/health`
+  - login curl example
+  - SPA navigation steps
+
+### Environment Rules (strict)
+- PASS: README states Docker-contained runtime and commands are Docker-based.
+- No direct `npm install`, `pip install`, `apt-get`, or manual DB setup instructions found in root README.
+
+### Demo Credentials (auth exists)
+- PASS: credentials include username + password + all listed roles:
+  - admin / user / technician table present.
+
+## Engineering Quality
+- Tech stack clarity: strong.
+- Architecture explanation: acceptable (links to `CLAUDE.md` for deeper architecture).
+- Testing instructions: strong, includes all suites and selective modes.
+- Security/roles explanation: adequate via credentials/role table and auth behavior notes.
+- Workflow clarity: strong (quick start, verification, tests, phase gate, directory layout).
+- Presentation quality: high.
+
 ## High Priority Issues
 - None.
 
 ## Medium Priority Issues
-- README relies on external docs (`CLAUDE.md`) for architecture depth instead of containing a concise in-file architecture section (`repo/README.md:9`).
+- `README.md` references expected executable frontend unit tests at `frontend/src/tests/unit/`; this matches current structure, so no active mismatch. No medium-severity compliance issues identified.
 
 ## Low Priority Issues
-- Uses both `docker-compose` and `docker compose` forms; technically valid, but mixed style can cause minor confusion (`repo/README.md:17`, `repo/README.md:21`).
+- Root README is comprehensive but long; quickstart-critical sections could be condensed for faster operator onboarding.
 
 ## Hard Gate Failures
 - None.
 
-Hard-gate checks (all passed):
-- README exists at required path: `repo/README.md`.
-- Project type declared near top: `fullstack` (`repo/README.md:3`).
-- Startup instruction includes `docker-compose up` (`repo/README.md:17`).
-- Access method includes URL + port (`http://localhost:8090`) (`repo/README.md:36`).
-- Verification method includes concrete API + UI flow (`curl` login and UI login/browse steps) (`repo/README.md:42-55`).
-- Environment rules are Docker-contained; no required host `npm install`/`pip install`/manual DB setup instructions.
-- Demo credentials provided with username/password and all roles (`repo/README.md:65-72`).
+## README Verdict
+**PASS**
 
-## Engineering Quality
-- Tech stack clarity: strong.
-- Architecture explanation: acceptable, but partially delegated to `CLAUDE.md`.
-- Testing instructions: strong (`./run_tests.sh` and per-suite dockerized commands).
-- Security/roles clarity: present (admin/user/technician credentials and role-aware login verification guidance).
-- Workflow clarity: strong quick-start + selective tests + directory map.
-- Presentation quality: good markdown structure.
+---
 
-## README Verdict (PASS / PARTIAL PASS / FAIL)
-- **PASS**
-
-## README Final Verdict
-- **PASS**
+## Final Combined Verdicts
+- **Test Coverage Audit:** PARTIAL PASS
+- **README Audit:** PASS

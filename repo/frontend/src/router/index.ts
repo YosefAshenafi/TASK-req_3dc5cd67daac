@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { getRoleHome } from './roleHome'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -100,17 +101,6 @@ const router = createRouter({
     },
   ],
 })
-
-function getRoleHome(role: string): string {
-  switch (role) {
-    case 'admin':
-      return '/admin'
-    case 'technician':
-      return '/devices'
-    default:
-      return '/search'
-  }
-}
 
 router.beforeEach(async (to, _from) => {
   const authStore = useAuthStore()

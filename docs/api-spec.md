@@ -207,10 +207,9 @@ Full-text search against the media library.
     {
       "id": 417,
       "title": "Overnight Safety Reminder",
+      "mime": "video/mp4",
       "duration_seconds": 95,
-      "tags": ["safety", "overnight"],
-      "thumbnail_urls": { "160": "...", "480": "...", "960": "..." },
-      "played_count": 284,
+      "status": "ready",
       "created_at": "2026-03-02T09:14:00Z",
       "reason_tags": ["safety", "overnight", "gate issues"]
     }
@@ -219,6 +218,8 @@ Full-text search against the media library.
   "degraded": false
 }
 ```
+
+`reason_tags` is populated only when `sort=recommended`; it is `null` for all other sort modes.
 
 Sets `X-Recommendation-Degraded: true` when the circuit breaker is open and the request asked for `sort=recommended`.
 
@@ -287,7 +288,11 @@ Fields: `file` (required), `title`, `description`, `tags[]` (all optional; defau
 Returns the current user's favorited assets (cursor-paginated).
 
 ### `PUT /api/favorites/{asset_id}`
-Idempotent add. `204 No Content`.
+Idempotent add.
+`200 OK`:
+```json
+{ "user_id": 12, "asset_id": 417, "created_at": "2026-04-24T10:00:00Z" }
+```
 
 ### `DELETE /api/favorites/{asset_id}`
 Idempotent remove. `204 No Content`.
@@ -460,8 +465,42 @@ Returns the current session's most recent play and up to 9 prior plays.
 ## 8. Recommendations
 
 ### `GET /api/recommendations`
-Returns up to 25 pre-computed candidates with `score` and `reason_tags`.
-- Empty + `degraded: true` when the circuit breaker is open.
+Returns up to 25 pre-computed candidates for the authenticated user.
+
+`200 OK` (recommendations active):
+```json
+{
+  "items": [
+    {
+      "asset_id": 417,
+      "score": 0.92,
+      "reason_tags": ["safety", "overnight"],
+      "refreshed_at": "2026-04-24T08:00:00Z",
+      "asset": { "id": 417, "title": "Overnight Safety Reminder", "mime": "video/mp4", "status": "ready" }
+    }
+  ],
+  "degraded": false,
+  "fallback": null
+}
+```
+
+`200 OK` (circuit breaker open — falls back to `most_played`):
+```json
+{
+  "items": [
+    {
+      "asset_id": 417,
+      "score": 0,
+      "reason_tags": [],
+      "refreshed_at": null,
+      "asset": { "id": 417, "title": "Overnight Safety Reminder", "mime": "video/mp4", "status": "ready" }
+    }
+  ],
+  "degraded": true,
+  "fallback": "most_played"
+}
+```
+Sets `X-Recommendation-Degraded: true` response header when degraded.
 
 ---
 
@@ -582,6 +621,17 @@ Lists replay audit records for a device (most recent first, up to 100).
   "queues": { "default": 3, "indexing": 0, "thumbnails": 12 },
   "storage": { "media_volume_free_bytes": 128849018880, "media_volume_used_pct": 42.7 },
   "devices": { "online": 18, "offline": 1, "dedup_rate_1h": 0.031 },
+  "content_usage": {
+    "window_hours": 24,
+    "plays_24h": 142,
+    "active_users_24h": 7,
+    "top_assets": [
+      { "asset_id": 417, "title": "Overnight Safety Reminder", "mime": "video/mp4", "play_count": 38 }
+    ],
+    "total_ready_assets": 53,
+    "favorites_count": 21,
+    "playlists_count": 9
+  },
   "feature_flags": {
     "recommended_enabled": {
       "enabled": true,
@@ -594,7 +644,8 @@ Lists replay audit records for a device (most recent first, up to 100).
 
 ### `POST /api/monitoring/feature-flags/{flag}/reset`
 Re-enables the named feature flag after a manual review. Currently the only valid value for `{flag}` is `recommended`.
-`200 OK`.
+`200 OK` → `{ "message": "Flag re-enabled.", "key": "recommended_enabled", "enabled": true }`.
+`404` if `{flag}` is not a recognised flag name.
 
 ---
 

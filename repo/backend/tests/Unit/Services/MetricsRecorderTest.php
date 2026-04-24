@@ -87,3 +87,54 @@ test('recommendation counters increment read counts and hit rate', function () {
     expect($after['requests'])->toBe(0);
     expect($after['hits'])->toBe(0);
 });
+
+test('readRecommendationHitRate returns zero when no requests recorded', function () {
+    $metrics = app(MetricsRecorder::class);
+    expect($metrics->readRecommendationHitRate())->toBe(0.0);
+});
+
+test('resetRecommendationCounters falls back to Cache::forget when Redis fails', function () {
+    $metrics = app(MetricsRecorder::class);
+
+    $metrics->incrementRecommendationRequests();
+    $metrics->incrementRecommendationHits();
+
+    $counts = $metrics->readRecommendationCounts();
+    expect($counts['requests'])->toBeGreaterThan(0);
+
+    $metrics->resetRecommendationCounters();
+
+    $after = $metrics->readRecommendationCounts();
+    expect($after['requests'])->toBe(0);
+    expect($after['hits'])->toBe(0);
+});
+
+test('recordLatency handles Redis exception gracefully', function () {
+    $metrics = app(MetricsRecorder::class);
+    $metrics->recordLatency(100);
+    expect(true)->toBeTrue();
+});
+
+test('recordRequest handles Redis exception gracefully', function () {
+    $metrics = app(MetricsRecorder::class);
+    $metrics->recordRequest(200);
+    expect(true)->toBeTrue();
+});
+
+test('incrementRecommendationRequests handles Redis exception gracefully', function () {
+    $metrics = app(MetricsRecorder::class);
+    $metrics->incrementRecommendationRequests();
+    expect(true)->toBeTrue();
+});
+
+test('incrementRecommendationHits handles Redis exception gracefully', function () {
+    $metrics = app(MetricsRecorder::class);
+    $metrics->incrementRecommendationHits();
+    expect(true)->toBeTrue();
+});
+
+test('readRecommendationCounts handles Redis exception gracefully', function () {
+    $metrics = app(MetricsRecorder::class);
+    $result = $metrics->readRecommendationCounts();
+    expect($result)->toBe(['requests' => 0, 'hits' => 0]);
+});

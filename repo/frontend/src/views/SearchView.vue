@@ -103,8 +103,11 @@ onMounted(() => fetchAssets(true))
 
 function toggleTag(tag: string) {
   const idx = selectedTags.value.indexOf(tag)
-  if (idx >= 0) selectedTags.value.splice(idx, 1)
-  else selectedTags.value.push(tag)
+  if (idx >= 0) {
+    selectedTags.value = selectedTags.value.filter((_, i) => i !== idx)
+  } else {
+    selectedTags.value = [...selectedTags.value, tag]
+  }
 }
 </script>
 

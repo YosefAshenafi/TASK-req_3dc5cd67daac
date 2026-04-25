@@ -175,6 +175,20 @@ describe('AdminUploadsView.vue', () => {
     expect(wrapper.text()).toContain('1 file queued')
   })
 
+  it('dragover adds and dragleave removes the active-drop styling', async () => {
+    listMock.mockResolvedValue({ items: [], next_cursor: null })
+
+    const wrapper = mount(AdminUploadsView)
+    await flushPromises()
+
+    const dropZone = wrapper.find('.border-dashed')
+    await dropZone.trigger('dragover')
+    expect(dropZone.classes().join(' ')).toContain('sky')
+
+    await dropZone.trigger('dragleave')
+    expect(dropZone.classes().join(' ')).not.toContain('sky')
+  })
+
   it('removes a queued entry when the X button on the entry is clicked', async () => {
     listMock.mockResolvedValue({ items: [], next_cursor: null })
 

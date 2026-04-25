@@ -142,6 +142,55 @@ describe('NowPlayingView.vue', () => {
     expect(wrapper.text()).toContain('1 play')
   })
 
+  it('renders thumbnails for queue items and recent plays when thumbnail_urls is set', async () => {
+    const thumbnail = { '160': 'http://cdn/t.jpg' }
+    listMock.mockResolvedValue({
+      items: [
+        historyEntry(1, {
+          asset: {
+            id: 1, title: 'Track 1', mime: 'audio/mpeg', size_bytes: 0, status: 'ready',
+            tags: [], created_at: new Date().toISOString(), thumbnail_urls: thumbnail,
+          },
+        }),
+      ],
+      next_cursor: null,
+    })
+    sessionsMock.mockResolvedValue({ sessions: [] })
+
+    const player = usePlayerStore()
+    player.currentAsset = {
+      id: 42, title: 'Now', mime: 'audio/mpeg', size_bytes: 0, status: 'ready',
+      tags: [], created_at: new Date().toISOString(), thumbnail_urls: thumbnail,
+    } as never
+    player.queue = [{
+      id: 2, title: 'Up Next', mime: 'audio/mpeg', size_bytes: 0, status: 'ready',
+      tags: [], created_at: new Date().toISOString(), thumbnail_urls: thumbnail,
+    } as never]
+
+    const wrapper = mount(NowPlayingView)
+    await flushPromises()
+
+    // At least one <img> should be rendered from the thumbnail_urls branches.
+    expect(wrapper.findAll('img').length).toBeGreaterThan(0)
+  })
+
+  it('falls back to "Asset #id" when a session item has a null asset', async () => {
+    listMock.mockResolvedValue({ items: [], next_cursor: null })
+    sessionsMock.mockResolvedValue({
+      sessions: [{
+        session_id: 'sess-abc',
+        context: null,
+        play_count: 1,
+        items: [{ id: 1, asset_id: 99, asset: null, played_at: new Date().toISOString() }],
+      }],
+    })
+
+    const wrapper = mount(NowPlayingView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Asset #99')
+  })
+
   it('still renders when both history and sessions fail — both are swallowed', async () => {
     listMock.mockRejectedValue(new Error('hx down'))
     sessionsMock.mockRejectedValue(new Error('sessions down'))

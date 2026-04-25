@@ -271,6 +271,39 @@ describe('PlaylistDetailView.vue', () => {
     expect(api.update).not.toHaveBeenCalled()
   })
 
+  it('Escape key in name edit input hides the rename field without saving', async () => {
+    api.get.mockResolvedValue(playlist([item(1)]))
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    await wrapper.get('button[aria-label="Edit name"]').trigger('click')
+    expect(wrapper.find('input').exists()).toBe(true)
+
+    await wrapper.get('input').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(api.update).not.toHaveBeenCalled()
+  })
+
+  it('closing the ShareDialog via close event dismisses it', async () => {
+    api.get.mockResolvedValue(playlist([item(1)]))
+    api.share.mockResolvedValue({
+      id: 99, playlist_id: 42, code: 'CLOSEME1',
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    })
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Share'))!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.share-dialog').exists()).toBe(true)
+
+    wrapper.findComponent({ name: 'ShareDialog' }).vm.$emit('close')
+    await flushPromises()
+    expect(wrapper.find('.share-dialog').exists()).toBe(false)
+  })
+
   it('notifies when delete fails', async () => {
     api.get.mockResolvedValue(playlist([item(1)]))
     api.delete.mockRejectedValue(new Error('delete failed'))

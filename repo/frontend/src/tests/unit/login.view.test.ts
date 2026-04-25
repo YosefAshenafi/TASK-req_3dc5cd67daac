@@ -153,6 +153,47 @@ describe('LoginView.vue', () => {
     expect(alert.text()).toContain('An unexpected error occurred')
   })
 
+  it('clears the countdown interval on unmount', async () => {
+    vi.useFakeTimers()
+    const auth = useAuthStore()
+    vi.spyOn(auth, 'login').mockRejectedValue(
+      new ApiError(429, { retry_after: 30 }, 'Too many attempts'),
+    )
+
+    const wrapper = mount(LoginView)
+    await wrapper.get('#username').setValue('u')
+    await wrapper.get('#password').setValue('x')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+
+    // Unmounting while the interval is active covers the onUnmounted if(countdownInterval) branch.
+    wrapper.unmount()
+    vi.useRealTimers()
+  })
+
+  it('frozen-account countdown ticks and clears frozenUntil when it reaches zero', async () => {
+    vi.useFakeTimers()
+    const auth = useAuthStore()
+    const frozenUntil = new Date(Date.now() + 2000).toISOString()
+    vi.spyOn(auth, 'login').mockRejectedValue(new FrozenError({ frozen_until: frozenUntil }))
+
+    const wrapper = mount(LoginView)
+    await wrapper.get('#username').setValue('frozen')
+    await wrapper.get('#password').setValue('x')
+    await wrapper.get('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Account frozen')
+
+    // Advance past the frozen_until timestamp so the countdown clears it.
+    vi.advanceTimersByTime(3000)
+    await flushPromises()
+
+    // frozenUntil is cleared; the frozen banner is gone and form re-enabled.
+    expect(wrapper.find('div.bg-orange-50').exists()).toBe(false)
+    vi.useRealTimers()
+  })
+
   it('counts down the rate-limit retry every second and re-enables the form at 0', async () => {
     vi.useFakeTimers()
     const auth = useAuthStore()

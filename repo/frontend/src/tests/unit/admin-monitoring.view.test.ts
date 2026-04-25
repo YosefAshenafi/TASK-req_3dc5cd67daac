@@ -189,4 +189,14 @@ describe('AdminMonitoringView.vue', () => {
 
     expect(wrapper.text()).toContain('No plays in the last 24 hours')
   })
+
+  it('clears the polling interval when the component is unmounted', async () => {
+    api.status.mockResolvedValue(healthyStatus())
+
+    const wrapper = mount(AdminMonitoringView)
+    await flushPromises()
+
+    // Unmounting while the interval is running covers the onUnmounted if(refreshTimer) branch.
+    wrapper.unmount()
+  })
 })

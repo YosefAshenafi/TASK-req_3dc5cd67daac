@@ -49,6 +49,19 @@ describe('AddToPlaylistDialog.vue', () => {
     expect(wrapper.text()).toContain('3 items')
   })
 
+  it('falls back to items.length when items_count is absent, then to 0', async () => {
+    api.list.mockResolvedValue([
+      { id: 1, name: 'WithItems', items: [{ id: 10 }, { id: 11 }] },
+      { id: 2, name: 'Empty' },
+    ])
+
+    const wrapper = mount(AddToPlaylistDialog, { props: { asset: asset() } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('2 items')
+    expect(wrapper.text()).toContain('0 items')
+  })
+
   it('renders an empty-state when no playlists exist', async () => {
     api.list.mockResolvedValue([])
     const wrapper = mount(AddToPlaylistDialog, { props: { asset: asset() } })

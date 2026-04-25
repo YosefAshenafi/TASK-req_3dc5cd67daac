@@ -20,6 +20,7 @@ vi.mock('@/components/AssetTile.vue', () => ({
       <div class="asset-tile" :data-id="asset.id">
         {{ asset.title }}
         <button class="unfav" @click="$emit('unfavorited', asset.id)">unfav</button>
+        <button class="atp" @click="$emit('addToPlaylist', asset)">add</button>
       </div>
     `,
   },
@@ -101,6 +102,21 @@ describe('FavoritesView.vue', () => {
 
     expect(listMock.mock.calls[1]![0]).toBe('cur-2')
     expect(wrapper.findAll('.asset-tile')).toHaveLength(2)
+  })
+
+  it('opens AddToPlaylistDialog when a tile emits addToPlaylist, then closes it', async () => {
+    listMock.mockResolvedValue({ items: [favorite(1)], next_cursor: null })
+    const wrapper = mount(FavoritesView)
+    await flushPromises()
+
+    // Trigger addToPlaylist from the stub tile.
+    await wrapper.get('.asset-tile[data-id="1"] .atp').trigger('click')
+    expect(wrapper.find('.add-to-playlist').exists()).toBe(true)
+
+    // Close the dialog.
+    await wrapper.findComponent({ name: 'AddToPlaylistDialog' }).vm.$emit('close')
+    await flushPromises()
+    expect(wrapper.find('.add-to-playlist').exists()).toBe(false)
   })
 
   it('notifies on fetch failure', async () => {

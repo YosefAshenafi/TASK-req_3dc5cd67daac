@@ -172,4 +172,50 @@ describe('DeviceDetailView.vue', () => {
 
     expect(wrapper.text()).toContain('No events found')
   })
+
+  it('renders out_of_order and too_old status chips covering all getStatusTitle branches', async () => {
+    api.events.mockResolvedValue({
+      items: [
+        event({ id: 1, status: 'out_of_order' }),
+        event({ id: 2, status: 'too_old' }),
+        event({ id: 3, status: undefined }),
+      ],
+      next_cursor: null,
+    })
+    const wrapper = mount(DeviceDetailView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('out_of_order')
+    expect(wrapper.text()).toContain('too_old')
+  })
+
+  it('loads next page when Load More is clicked with a non-null next_cursor', async () => {
+    api.events
+      .mockResolvedValueOnce({ items: [event({ id: 1 })], next_cursor: 'cur-2' })
+      .mockResolvedValueOnce({ items: [event({ id: 2 })], next_cursor: null })
+
+    const wrapper = mount(DeviceDetailView)
+    await flushPromises()
+
+    const loadMore = wrapper.findAll('button').find((b) => b.text().includes('Load More'))!
+    await loadMore.trigger('click')
+    await flushPromises()
+
+    expect(api.events).toHaveBeenCalledTimes(2)
+    expect(api.events.mock.calls[1]![1]).toMatchObject({ cursor: 'cur-2' })
+  })
+
+  it('Cancel button in replay confirmation hides the confirm dialog', async () => {
+    const wrapper = mount(DeviceDetailView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Replay')!.trigger('click')
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Initiate Replay')!.trigger('click')
+    expect(wrapper.text()).toContain('Confirm Replay')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
+    expect(wrapper.text()).not.toContain('Confirm Replay')
+  })
 })

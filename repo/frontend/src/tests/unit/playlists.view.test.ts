@@ -183,4 +183,100 @@ describe('PlaylistsView.vue', () => {
 
     expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to load playlists' })
   })
+
+  it('revokes a share and clears the ShareDialog', async () => {
+    api.list.mockResolvedValue([playlist(9)])
+    api.share.mockResolvedValue({
+      id: 100,
+      playlist_id: 9,
+      code: 'ABCDWXYZ',
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    })
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistsView)
+    await flushPromises()
+
+    await wrapper.get('button[aria-label="Share playlist"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.share-dialog').exists()).toBe(true)
+
+    wrapper.findComponent({ name: 'ShareDialog' }).vm.$emit('revoked')
+    await flushPromises()
+
+    expect(wrapper.find('.share-dialog').exists()).toBe(false)
+    expect(spy).toHaveBeenCalledWith({ type: 'success', message: 'Share revoked' })
+  })
+
+  it('notifies when create playlist fails', async () => {
+    api.list.mockResolvedValue([])
+    api.create.mockRejectedValue(new Error('create fail'))
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistsView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('New Playlist'))!.trigger('click')
+    await wrapper.get('input[placeholder="Enter playlist name…"]').setValue('Failed List')
+    await wrapper.findAll('button').find((b) => b.text() === 'Create')!.trigger('click')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to create playlist' })
+  })
+
+  it('notifies when share fails', async () => {
+    api.list.mockResolvedValue([playlist(9)])
+    api.share.mockRejectedValue(new Error('share fail'))
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistsView)
+    await flushPromises()
+
+    await wrapper.get('button[aria-label="Share playlist"]').trigger('click')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to create share link' })
+  })
+
+  it('notifies when delete fails', async () => {
+    api.list.mockResolvedValue([playlist(5, { name: 'Sticky' })])
+    api.delete.mockRejectedValue(new Error('delete fail'))
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistsView)
+    await flushPromises()
+
+    await wrapper.get('button[aria-label="Delete playlist"]').trigger('click')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to delete playlist' })
+    confirmSpy.mockRestore()
+  })
+
+  it('cancel hides the create input without calling API', async () => {
+    api.list.mockResolvedValue([])
+    const wrapper = mount(PlaylistsView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('New Playlist'))!.trigger('click')
+    expect(wrapper.find('input[placeholder="Enter playlist name…"]').exists()).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
+    expect(wrapper.find('input[placeholder="Enter playlist name…"]').exists()).toBe(false)
+    expect(api.create).not.toHaveBeenCalled()
+  })
+
+  it('renders 1 item (singular) count for a playlist with one item', async () => {
+    api.list.mockResolvedValue([playlist(1, { items_count: 1 })])
+    const wrapper = mount(PlaylistsView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('1 item')
+    expect(wrapper.text()).not.toContain('1 items')
+  })
 })

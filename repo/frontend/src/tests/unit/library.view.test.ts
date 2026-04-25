@@ -99,4 +99,32 @@ describe('LibraryView.vue', () => {
     expect(listMock.mock.calls[1]![0].cursor).toBe('cur-2')
     expect(wrapper.findAll('.asset-tile')).toHaveLength(2)
   })
+
+  it('opens AddToPlaylistDialog when an asset tile emits addToPlaylist', async () => {
+    listMock.mockResolvedValue({ items: [asset(7)], next_cursor: null })
+
+    const wrapper = mount(LibraryView)
+    await flushPromises()
+
+    expect(wrapper.find('.add-to-playlist').exists()).toBe(false)
+    wrapper.findComponent({ name: 'AssetTile' }).vm.$emit('addToPlaylist', asset(7))
+    await flushPromises()
+
+    expect(wrapper.find('.add-to-playlist').exists()).toBe(true)
+  })
+
+  it('closes the AddToPlaylistDialog when it emits close', async () => {
+    listMock.mockResolvedValue({ items: [asset(7)], next_cursor: null })
+
+    const wrapper = mount(LibraryView)
+    await flushPromises()
+
+    wrapper.findComponent({ name: 'AssetTile' }).vm.$emit('addToPlaylist', asset(7))
+    await flushPromises()
+    expect(wrapper.find('.add-to-playlist').exists()).toBe(true)
+
+    wrapper.findComponent({ name: 'AddToPlaylistDialog' }).vm.$emit('close')
+    await flushPromises()
+    expect(wrapper.find('.add-to-playlist').exists()).toBe(false)
+  })
 })

@@ -139,4 +139,42 @@ describe('AppLayout.vue', () => {
     expect(wrapper.text()).toContain('Devices')
     expect(wrapper.text()).not.toContain('Favorites')
   })
+
+  it('renders notification dot when there are pending notifications', () => {
+    const auth = useAuthStore()
+    const ui = useUiStore()
+    auth.user = { id: 1, username: 'u', role: 'user' }
+    ui.addNotification({ type: 'success', message: 'Done!', timeout: 0 })
+
+    const wrapper = mount(AppLayout, { slots: { default: '<div>Content</div>' } })
+    expect(wrapper.find('span.bg-red-500').exists()).toBe(true)
+  })
+
+  it('applies the correct role badge style for admin users', () => {
+    const auth = useAuthStore()
+    auth.user = { id: 1, username: 'adm', role: 'admin' }
+
+    const wrapper = mount(AppLayout, { slots: { default: '<div>Content</div>' } })
+    const badge = wrapper.findAll('span').find((s) => s.text() === 'admin')
+    expect(badge?.classes().join(' ')).toContain('red')
+  })
+
+  it('applies the correct role badge style for technician users', () => {
+    const auth = useAuthStore()
+    auth.user = { id: 2, username: 'tech', role: 'technician' }
+
+    const wrapper = mount(AppLayout, { slots: { default: '<div>Content</div>' } })
+    const badge = wrapper.findAll('span').find((s) => s.text() === 'technician')
+    expect(badge?.classes().join(' ')).toContain('amber')
+  })
+
+  it('falls back to U initial when username is empty', () => {
+    const auth = useAuthStore()
+    auth.user = { id: 3, username: '', role: 'user' }
+
+    const wrapper = mount(AppLayout, { slots: { default: '<div>Content</div>' } })
+    const initials = wrapper.findAll('div').filter((d) => d.classes().includes('rounded-full'))
+    const hasU = initials.some((d) => d.text() === 'U')
+    expect(hasU).toBe(true)
+  })
 })

@@ -285,4 +285,142 @@ describe('AdminUploadsView.vue', () => {
 
     globalThis.XMLHttpRequest = origXHR
   })
+
+  it('shows network error message when XHR fires the error event', async () => {
+    listMock.mockResolvedValue({ items: [], next_cursor: null })
+
+    const origXHR = globalThis.XMLHttpRequest
+    class FakeXHR {
+      handlers: Record<string, Array<(e: unknown) => void>> = {}
+      status = 0
+      responseText = ''
+      withCredentials = false
+      upload = { addEventListener: vi.fn() }
+      open = vi.fn()
+      setRequestHeader = vi.fn()
+      addEventListener(name: string, fn: (e: unknown) => void) {
+        this.handlers[name] = this.handlers[name] ?? []
+        this.handlers[name].push(fn)
+      }
+      send() {
+        for (const fn of this.handlers['error'] ?? []) fn({})
+      }
+    }
+    globalThis.XMLHttpRequest = FakeXHR as unknown as typeof XMLHttpRequest
+
+    const wrapper = mount(AdminUploadsView)
+    await flushPromises()
+
+    const fileInput = wrapper.find('input[type="file"]').element as HTMLInputElement
+    const f = new File([new Uint8Array([0x49, 0x44, 0x33])], 'net.mp3', { type: 'audio/mpeg' })
+    Object.defineProperty(fileInput, 'files', { value: [f] })
+    await wrapper.find('input[type="file"]').trigger('change')
+    await flushPromises()
+
+    const uploadBtn = wrapper.findAll('button').find((b) => b.text() === 'Upload')
+    await uploadBtn!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Network error')
+    globalThis.XMLHttpRequest = origXHR
+  })
+
+  it('formats file size in bytes, KB, and MB correctly', async () => {
+    listMock.mockResolvedValue({
+      items: [
+        asset({ id: 1, title: 'Tiny', size_bytes: 500 }),
+        asset({ id: 2, title: 'Small', size_bytes: 2048 }),
+        asset({ id: 3, title: 'Large', size_bytes: 2 * 1024 * 1024 }),
+      ],
+      next_cursor: null,
+    })
+
+    const wrapper = mount(AdminUploadsView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('500 B')
+    expect(wrapper.text()).toContain('2.0 KB')
+    expect(wrapper.text()).toContain('2.0 MB')
+  })
+
+  it('statusBadgeClass returns gray for an unknown status', async () => {
+    listMock.mockResolvedValue({
+      items: [asset({ id: 9, title: 'Unknown', status: 'unknown_status' })],
+      next_cursor: null,
+    })
+
+    const wrapper = mount(AdminUploadsView)
+    await flushPromises()
+
+    const unknownBadge = wrapper.findAll('span').find((s) => s.text() === 'unknown_status')
+    expect(unknownBadge?.classes().join(' ')).toContain('gray')
+  })
+
+  it('queues an image file and generates a preview URL', async () => {
+    listMock.mockResolvedValue({ items: [], next_cursor: null })
+
+    const origCreateObjectURL = URL.createObjectURL
+    URL.createObjectURL = vi.fn(() => 'blob:preview-url')
+
+    const wrapper = mount(AdminUploadsView)
+    await flushPromises()
+
+    const fileInput = wrapper.find('input[type="file"]').element as HTMLInputElement
+    const img = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'photo.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(fileInput, 'files', { value: [img] })
+    await wrapper.find('input[type="file"]').trigger('change')
+    await flushPromises()
+
+    expect(wrapper.find('img').exists()).toBe(true)
+    expect(wrapper.find('img').attributes('src')).toBe('blob:preview-url')
+    URL.createObjectURL = origCreateObjectURL
+  })
+
+  it('uploads a file with tags and description appended to FormData', async () => {
+    listMock.mockResolvedValue({ items: [], next_cursor: null })
+
+    const origXHR = globalThis.XMLHttpRequest
+    const appendedKeys: string[] = []
+    class FakeXHR {
+      handlers: Record<string, Array<(e: unknown) => void>> = {}
+      status = 0
+      responseText = ''
+      withCredentials = false
+      upload = { addEventListener: vi.fn() }
+      open = vi.fn()
+      setRequestHeader = vi.fn()
+      addEventListener(name: string, fn: (e: unknown) => void) {
+        this.handlers[name] = this.handlers[name] ?? []
+        this.handlers[name].push(fn)
+      }
+      send(fd: FormData) {
+        fd.forEach((_v, key) => appendedKeys.push(key))
+        this.status = 201
+        this.responseText = JSON.stringify({ id: 77, title: 'Tagged' })
+        for (const fn of this.handlers['load'] ?? []) fn({})
+      }
+    }
+    globalThis.XMLHttpRequest = FakeXHR as unknown as typeof XMLHttpRequest
+
+    const wrapper = mount(AdminUploadsView)
+    await flushPromises()
+
+    const fileInput = wrapper.find('input[type="file"]').element as HTMLInputElement
+    const f = new File([new Uint8Array([0x49, 0x44, 0x33])], 'tagged.mp3', { type: 'audio/mpeg' })
+    Object.defineProperty(fileInput, 'files', { value: [f] })
+    await wrapper.find('input[type="file"]').trigger('change')
+    await flushPromises()
+
+    const [, tagsInput, descInput] = wrapper.findAll('input[type="text"]')
+    await tagsInput!.setValue('Rock, Pop')
+    await descInput!.setValue('A great track')
+
+    const uploadBtn = wrapper.findAll('button').find((b) => b.text() === 'Upload')
+    await uploadBtn!.trigger('click')
+    await flushPromises()
+
+    expect(appendedKeys).toContain('tags[]')
+    expect(appendedKeys).toContain('description')
+    globalThis.XMLHttpRequest = origXHR
+  })
 })

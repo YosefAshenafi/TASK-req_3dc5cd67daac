@@ -199,4 +199,147 @@ describe('PlaylistDetailView.vue', () => {
     expect(api.share).toHaveBeenCalledWith(42, { expires_in_hours: 24 })
     expect(wrapper.find('.share-dialog').exists()).toBe(true)
   })
+
+  it('closes the ShareDialog and shows a toast when share is revoked', async () => {
+    api.get.mockResolvedValue(playlist([item(1)]))
+    api.share.mockResolvedValue({
+      id: 99,
+      playlist_id: 42,
+      code: 'SHARECODE',
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    })
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Share'))!.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.share-dialog').exists()).toBe(true)
+
+    wrapper.findComponent({ name: 'ShareDialog' }).vm.$emit('revoked')
+    await flushPromises()
+
+    expect(wrapper.find('.share-dialog').exists()).toBe(false)
+    expect(spy).toHaveBeenCalledWith({ type: 'success', message: 'Share revoked' })
+  })
+
+  it('notifies on share failure without crashing', async () => {
+    api.get.mockResolvedValue(playlist([item(1)]))
+    api.share.mockRejectedValue(new Error('share failed'))
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Share'))!.trigger('click')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to create share' })
+  })
+
+  it('notifies when rename save fails', async () => {
+    api.get.mockResolvedValue(playlist([item(1)]))
+    api.update.mockRejectedValue(new Error('update failed'))
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    await wrapper.get('button[aria-label="Edit name"]').trigger('click')
+    const input = wrapper.get('input')
+    await input.setValue('Fail Name')
+    await wrapper.findAll('button').find((b) => b.text().includes('Save'))!.trigger('click')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to rename playlist' })
+  })
+
+  it('cancel edit button hides the rename input without saving', async () => {
+    api.get.mockResolvedValue(playlist([item(1)]))
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    await wrapper.get('button[aria-label="Edit name"]').trigger('click')
+    expect(wrapper.find('input').exists()).toBe(true)
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
+    expect(api.update).not.toHaveBeenCalled()
+  })
+
+  it('notifies when delete fails', async () => {
+    api.get.mockResolvedValue(playlist([item(1)]))
+    api.delete.mockRejectedValue(new Error('delete failed'))
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Delete'))!.trigger('click')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to delete playlist' })
+    confirmSpy.mockRestore()
+  })
+
+  it('notifies when remove item fails', async () => {
+    api.get.mockResolvedValue(playlist([item(1), item(2)]))
+    api.removeItem.mockRejectedValue(new Error('remove failed'))
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    const deleteButtons = wrapper
+      .findAll('button')
+      .filter((b) => b.find('svg path').exists() && b.html().includes('M6 18L18 6'))
+    await deleteButtons[0]!.trigger('click')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to remove item' })
+  })
+
+  it('moves an item upward and sends the new ordering to the API', async () => {
+    api.get.mockResolvedValue(playlist([item(1), item(2), item(3)]))
+    api.reorderItems.mockResolvedValue([])
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    const upArrows = wrapper
+      .findAll('button')
+      .filter((b) => b.html().includes('M5 15l7-7 7 7'))
+    // Click up on the second item (index 1) to swap with index 0
+    await upArrows[1]!.trigger('click')
+    await flushPromises()
+
+    expect(api.reorderItems).toHaveBeenCalledWith(42, { item_ids: [2, 1, 3] })
+  })
+
+  it('refetches playlist when reorder API call fails', async () => {
+    api.get.mockResolvedValue(playlist([item(1), item(2)]))
+    api.reorderItems.mockRejectedValue(new Error('reorder failed'))
+    api.get.mockResolvedValue(playlist([item(1), item(2)]))
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(PlaylistDetailView)
+    await flushPromises()
+
+    const downArrows = wrapper
+      .findAll('button')
+      .filter((b) => b.html().includes('M19 9l-7 7-7-7'))
+    await downArrows[0]!.trigger('click')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to reorder items' })
+    expect(api.get).toHaveBeenCalledTimes(2)
+  })
 })

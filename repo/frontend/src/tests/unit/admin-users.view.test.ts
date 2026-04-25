@@ -179,4 +179,125 @@ describe('AdminUsersView.vue', () => {
 
     expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to load users' })
   })
+
+  it('unfreezes a frozen user and updates their status to Active', async () => {
+    const frozenUser = user({ id: 5, username: 'frosty', frozen_until: new Date(Date.now() + 24 * 3600 * 1000).toISOString() })
+    api.list.mockResolvedValue({ items: [frozenUser] })
+    api.unfreeze.mockResolvedValue(user({ id: 5, username: 'frosty', frozen_until: null }))
+
+    const wrapper = mount(AdminUsersView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Unfreeze'))!.trigger('click')
+    await flushPromises()
+
+    expect(api.unfreeze).toHaveBeenCalledWith(5)
+    expect(wrapper.text()).toContain('Active')
+  })
+
+  it('soft-deletes a user after confirm and removes them from the table', async () => {
+    api.list.mockResolvedValue({ items: [user({ id: 9, username: 'victim' })] })
+    api.softDelete.mockResolvedValue(undefined)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    const wrapper = mount(AdminUsersView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Delete'))!.trigger('click')
+    await flushPromises()
+
+    expect(api.softDelete).toHaveBeenCalledWith(9)
+    expect(wrapper.text()).not.toContain('victim')
+    confirmSpy.mockRestore()
+  })
+
+  it('does NOT delete when confirm() is denied', async () => {
+    api.list.mockResolvedValue({ items: [user({ id: 10, username: 'kept' })] })
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    const wrapper = mount(AdminUsersView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Delete'))!.trigger('click')
+    await flushPromises()
+
+    expect(api.softDelete).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('kept')
+    confirmSpy.mockRestore()
+  })
+
+  it('shows Deleted label and style for a soft-deleted user', async () => {
+    api.list.mockResolvedValue({
+      items: [user({ id: 11, username: 'ghost', deleted_at: new Date().toISOString() })],
+    })
+
+    const wrapper = mount(AdminUsersView)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Deleted')
+  })
+
+  it('notifies on freeze failure', async () => {
+    api.list.mockResolvedValue({ items: [user({ id: 12, username: 'snow' })] })
+    api.freeze.mockRejectedValue(new Error('freeze fail'))
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+
+    const wrapper = mount(AdminUsersView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Freeze'))!.trigger('click')
+    await wrapper.get('input[type="number"]').setValue(24)
+    await wrapper.findAll('button').find((b) => b.text() === 'Confirm')!.trigger('click')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith({ type: 'error', message: 'Failed to freeze user' })
+  })
+
+  it('cancels the freeze input when Cancel is clicked', async () => {
+    api.list.mockResolvedValue({ items: [user({ id: 13, username: 'nope' })] })
+
+    const wrapper = mount(AdminUsersView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Freeze'))!.trigger('click')
+    const cancelBtn = wrapper.findAll('button').find((b) => b.text() === 'Cancel')!
+    await cancelBtn.trigger('click')
+
+    expect(wrapper.find('input[type="number"]').exists()).toBe(false)
+  })
+
+  it('filters by active status, hiding frozen and blacklisted users', async () => {
+    api.list.mockResolvedValue({
+      items: [
+        user({ id: 1, username: 'active_user', role: 'user' }),
+        user({ id: 2, username: 'frozen_user', role: 'user', frozen_until: new Date(Date.now() + 60_000).toISOString() }),
+        user({ id: 3, username: 'blacklisted_user', role: 'user', blacklisted_at: new Date().toISOString() }),
+      ],
+    })
+
+    const wrapper = mount(AdminUsersView)
+    await flushPromises()
+
+    const [, statusSelect] = wrapper.findAll('select')
+    await statusSelect!.setValue('active')
+
+    expect(wrapper.text()).toContain('active_user')
+    expect(wrapper.text()).not.toContain('frozen_user')
+    expect(wrapper.text()).not.toContain('blacklisted_user')
+  })
+
+  it('does NOT blacklist when confirm() is denied', async () => {
+    api.list.mockResolvedValue({ items: [user({ id: 14, username: 'safe' })] })
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    const wrapper = mount(AdminUsersView)
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Blacklist'))!.trigger('click')
+    await flushPromises()
+
+    expect(api.blacklist).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
+  })
 })

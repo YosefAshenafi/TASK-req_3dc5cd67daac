@@ -111,4 +111,27 @@ describe('RedeemDialog.vue', () => {
 
     expect(wrapper.text()).toContain('8/8 characters')
   })
+
+  it('shows unexpected error message for non-ApiError rejections', async () => {
+    api.redeem.mockRejectedValue(new Error('plain error'))
+    const wrapper = mount(RedeemDialog)
+    await typeCode(wrapper, 'ABCDEFGH')
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Redeem')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('An unexpected error occurred')
+  })
+
+  it('emits close when the Cancel button is clicked', async () => {
+    const wrapper = mount(RedeemDialog)
+    await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
+    expect(wrapper.emitted('close')).toBeTruthy()
+  })
+
+  it('emits close when clicking the backdrop overlay', async () => {
+    const wrapper = mount(RedeemDialog)
+    await wrapper.find('.fixed.inset-0').trigger('click')
+    expect(wrapper.emitted('close')).toBeTruthy()
+  })
 })

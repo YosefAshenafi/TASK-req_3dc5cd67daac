@@ -42,7 +42,7 @@ function makeAsset(overrides: Partial<Asset> = {}): Asset {
     duration_seconds: 125,
     size_bytes: 1024,
     status: 'ready',
-    thumbnail_urls: { '160': '/thumb-160.jpg' },
+    thumbnail_urls: { '160': '/thumb-160.jpg', '480': '/thumb-480.jpg', '960': '/thumb-960.jpg' },
     tags: ['safety', 'parking'],
     created_at: new Date().toISOString(),
     reason_tags: ['recommended'],
@@ -73,7 +73,7 @@ describe('AssetTile.vue', () => {
   it('renders placeholder when thumbnail is missing and hides reason tags by default', () => {
     const asset = makeAsset({
       thumbnail_urls: null,
-      duration_seconds: null,
+      duration_seconds: undefined,
       reason_tags: ['recommended'],
       tags: [],
     })

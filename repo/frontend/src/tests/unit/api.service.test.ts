@@ -195,7 +195,7 @@ describe('services/api', () => {
     localStorage.setItem('smartpark_token', 'tok-2')
     fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }))
 
-    await usersApi.create({ username: 'u2', password: 'password123', role: 'user', email: 'u2@example.com' })
+    await usersApi.create({ username: 'u2', password: 'password123', role: 'user' })
     await usersApi.freeze(7, { duration_hours: 24 })
     await usersApi.unfreeze(7)
     await usersApi.blacklist(7)

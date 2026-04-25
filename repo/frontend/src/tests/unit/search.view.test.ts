@@ -172,4 +172,66 @@ describe('SearchView.vue', () => {
     expect(searchMock.mock.calls[1]![0].cursor).toBe('cur-2')
     expect(wrapper.findAll('.asset-tile')).toHaveLength(2)
   })
+
+  it('silently ignores AbortError without showing a notification', async () => {
+    const ui = useUiStore()
+    const spy = vi.spyOn(ui, 'addNotification')
+    const abortErr = Object.assign(new Error('aborted'), { name: 'AbortError' })
+    searchMock.mockRejectedValue(abortErr)
+
+    mount(SearchView)
+    await flushPromises()
+
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('deselects a tag when clicking it a second time', async () => {
+    searchMock.mockResolvedValue({ data: { items: [], next_cursor: null }, degraded: false })
+    const wrapper = mount(SearchView)
+    await flushPromises()
+    searchMock.mockClear()
+
+    const safetyBtn = wrapper.findAll('button').find((b) => b.text() === 'Safety')!
+    await safetyBtn.trigger('click')
+    await runDebounce()
+    const callWithTag = searchMock.mock.calls[0]![0]
+    expect(callWithTag.tags).toContain('Safety')
+
+    searchMock.mockClear()
+    await safetyBtn.trigger('click')
+    await runDebounce()
+    const callWithoutTag = searchMock.mock.calls[0]![0]
+    expect(callWithoutTag.tags).toBeUndefined()
+  })
+
+  it('applies duration and recency filters when buttons are clicked', async () => {
+    searchMock.mockResolvedValue({ data: { items: [], next_cursor: null }, degraded: false })
+    const wrapper = mount(SearchView)
+    await flushPromises()
+    searchMock.mockClear()
+
+    const dur2min = wrapper.findAll('button').find((b) => b.text() === '< 2 min')!
+    await dur2min.trigger('click')
+    await runDebounce()
+    expect(searchMock.mock.calls[0]![0].duration_lt).toBe(120)
+
+    searchMock.mockClear()
+    const days30 = wrapper.findAll('button').find((b) => b.text() === '30 days')!
+    await days30.trigger('click')
+    await runDebounce()
+    expect(searchMock.mock.calls[0]![0].recent_days).toBe(30)
+  })
+
+  it('hides reason tags when sort is not recommended', async () => {
+    searchMock.mockResolvedValue({ data: { items: [makeAsset(1)], next_cursor: null }, degraded: false })
+    const wrapper = mount(SearchView)
+    await flushPromises()
+
+    const mostPlayedBtn = wrapper.findAll('button').find((b) => b.text() === 'Most Played')!
+    await mostPlayedBtn.trigger('click')
+    await flushPromises()
+    await runDebounce()
+
+    expect(wrapper.find('.asset-tile').attributes('data-show-reasons')).toBe('false')
+  })
 })

@@ -31,7 +31,7 @@ test('PUT /api/settings rejects unauthenticated requests', function () {
     $this->putJson('/api/settings', ['site_name' => 'Nope'])
         ->assertStatus(401);
 
-    expect(AppSetting::where('key', 'site_name')->exists())->toBeFalse();
+    expect(AppSetting::getValue('site_name'))->toBe('SmartPark');
 });
 
 test('PUT /api/settings rejects non-admin users with 403', function () {
@@ -42,7 +42,7 @@ test('PUT /api/settings rejects non-admin users with 403', function () {
         'site_name' => 'Blocked',
     ])->assertStatus(403);
 
-    expect(AppSetting::where('key', 'site_name')->exists())->toBeFalse();
+    expect(AppSetting::getValue('site_name'))->toBe('SmartPark');
 });
 
 test('PUT /api/settings rejects technician users with 403', function () {
@@ -53,7 +53,7 @@ test('PUT /api/settings rejects technician users with 403', function () {
         'site_name' => 'Blocked',
     ])->assertStatus(403);
 
-    expect(AppSetting::where('key', 'site_name')->exists())->toBeFalse();
+    expect(AppSetting::getValue('site_name'))->toBe('SmartPark');
 });
 
 test('PUT /api/settings persists partial updates and returns the resolved settings', function () {
@@ -95,7 +95,7 @@ test('PUT /api/settings validates field length and type', function () {
         'available_tags' => [str_repeat('y', 61)],
     ])->assertStatus(422);
 
-    expect(AppSetting::where('key', 'site_name')->exists())->toBeFalse();
+    expect(AppSetting::getValue('site_name'))->toBe('SmartPark');
 });
 
 test('PUT /api/settings accepts an empty body and returns current resolved settings', function () {

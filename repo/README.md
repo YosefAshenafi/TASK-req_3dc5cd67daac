@@ -167,6 +167,141 @@ docker compose --profile dev run --rm frontend-dev npx vitest
 
 ---
 
+## Production deployment
+
+```bash
+# 1. Build the frontend SPA (writes to ./frontend/dist)
+docker compose --profile test run --rm frontend-build
+
+# 2. Start the full production stack (backend + nginx + backup service)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# 3. Verify the stack is healthy
+./scripts/smoke.sh http://localhost:8090
+```
+
+---
+
+## Stop
+
+```bash
+docker compose down          # stop and remove containers (data volumes preserved)
+docker compose down -v       # also remove volumes — destroys all data
+```
+
+---
+
+## Backup
+
+The production compose stack includes an automatic daily backup service (see `docker-compose.prod.yml`). To run a manual backup at any time:
+
+```bash
+# Manual dump — writes a timestamped .sql.gz to the host directory ./backups/
+mkdir -p backups
+docker compose exec mysql \
+  mysqldump \
+    -u root -p"${MYSQL_ROOT_PASSWORD:-root_dev}" \
+    --single-transaction --routines --triggers --hex-blob \
+    smartpark \
+  | gzip -9 > backups/$(date +%Y%m%d_%H%M%S).sql.gz
+```
+
+Automatic backups (production stack only) write to the `smartpark-backups` Docker volume and are pruned after 14 days.
+
+---
+
+## Restore
+
+```bash
+# 1. Copy the .sql.gz into the running MySQL container
+docker compose cp backups/20260101_020000.sql.gz mysql:/tmp/restore.sql.gz
+
+# 2. Decompress and restore (this overwrites the smartpark database)
+docker compose exec -T mysql bash -c '
+  gunzip -c /tmp/restore.sql.gz \
+  | mysql -u root -p"${MYSQL_ROOT_PASSWORD:-root_dev}" smartpark
+'
+
+# 3. Clear any stale Laravel caches
+docker compose exec backend php artisan cache:clear
+docker compose exec backend php artisan config:clear
+```
+
+---
+
+## Rotate encryption keys
+
+### App key (Sanctum tokens, session, CSRF)
+
+```bash
+# 1. Generate a new key
+docker compose exec backend php artisan key:generate --show
+# Output: base64:NEWKEYHERE==
+
+# 2. Update APP_KEY in .env (or your secrets manager)
+# 3. Restart backend — all existing Sanctum tokens are invalidated
+docker compose restart backend queue-worker scheduler
+```
+
+### Field encryption key (`/run/secrets/field_key`)
+
+The field encryption key is mounted from `docker/secrets/field_encryption.key`.
+To rotate it:
+
+```bash
+# 1. Generate a new key (must be exactly 32 bytes, base64-encoded)
+openssl rand -base64 32 > docker/secrets/field_encryption.key.new
+
+# 2. Swap the file and restart services that read it
+mv docker/secrets/field_encryption.key.new docker/secrets/field_encryption.key
+docker compose restart backend queue-worker scheduler
+```
+
+> **Note:** Encrypted fields (e.g. `email_enc`) stored with the old key will fail to decrypt until you re-encrypt them. Perform re-encryption before restarting in production if you have live data — run `php artisan tinker` to iterate over `User` records and re-set the `email_enc` field, which will re-encrypt with the new key.
+
+### Gateway token
+
+```bash
+# Update GATEWAY_TOKEN in .env, then restart the gateway
+docker compose --profile devices restart gateway
+```
+
+---
+
+## Trigger replay
+
+Replay re-submits a range of device events for a given device without re-applying side effects. Use it to recover from a data loss event or to re-process corrupted records.
+
+```bash
+# 1. Find the device ID and sequence range to replay
+docker compose exec backend php artisan tinker --execute="
+    App\Models\DeviceEvent::where('device_id','gate-01')
+        ->orderBy('sequence_no')
+        ->select('sequence_no','status','occurred_at')
+        ->limit(10)
+        ->get()
+        ->toArray();
+"
+
+# 2. Trigger replay via the API (requires admin or technician Bearer token)
+#    Replace TOKEN, DEVICE_ID, SINCE, UNTIL, and REASON as appropriate.
+TOKEN="<your-bearer-token>"
+curl -X POST http://localhost:8090/api/devices/gate-01/replay \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "since_sequence": 100,
+    "until_sequence": 150,
+    "reason": "Corrupted events re-ingested after storage failure on 2026-01-15"
+  }'
+
+# 3. View the replay audit trail
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8090/api/devices/gate-01/replay/audits | jq .
+```
+
+---
+
 ## Per-phase infrastructure gate
 
 ```bash

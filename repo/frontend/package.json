@@ -1,0 +1,32 @@
+{
+  "name": "smartpark-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "lint": "eslint . --ext .vue,.js --fix"
+  },
+  "dependencies": {
+    "@vueuse/core": "^10.9.0",
+    "axios": "^1.6.8",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.7",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/test-utils": "^2.4.5",
+    "autoprefixer": "^10.4.19",
+    "jsdom": "^24.0.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "vite": "^5.2.10",
+    "vitest": "^1.4.0"
+  }
+}

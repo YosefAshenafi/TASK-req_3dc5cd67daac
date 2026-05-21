@@ -1,0 +1,28 @@
+# Planning artifacts (private, never published)
+plans/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python / tooling caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Node (top-level tooling, not inside repo/)
+node_modules/
+
+# Logs at project root
+*.log
+
+# NOTE: .tmp/ is intentionally NOT ignored — audit reports must be committed

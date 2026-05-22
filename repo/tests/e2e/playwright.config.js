@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: false,
   retries: 1,
   workers: 1,
-  reporter: 'html',
+  reporter: [['html', { open: 'never' }], ['list']],
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:8080',
     trace: 'on-first-retry',

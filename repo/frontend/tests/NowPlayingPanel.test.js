@@ -39,6 +39,8 @@ describe('NowPlayingPanel', () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     const store = useNowPlayingStore()
+    // Prevent onMounted fetchHistory from overwriting the test data
+    vi.spyOn(store, 'fetchHistory').mockResolvedValue(undefined)
     store.history = [
       { id: 1, played_at: new Date().toISOString(), asset: { title: 'Test Track' } },
     ]

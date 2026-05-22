@@ -66,7 +66,7 @@ import { ref, onMounted } from 'vue'
 import api from '@/api/axios'
 
 const users = ref([])
-const isLoading = ref(false)
+const isLoading = ref(true)
 const freezeTarget = ref(null)
 const freezeHours = ref(72)
 

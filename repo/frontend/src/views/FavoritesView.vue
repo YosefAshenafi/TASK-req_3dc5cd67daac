@@ -44,7 +44,7 @@ import { useNowPlayingStore } from '@/stores/nowPlaying'
 import AssetCard from '@/components/AssetCard.vue'
 
 const favorites = ref([])
-const isLoading = ref(false)
+const isLoading = ref(true)
 const error = ref(null)
 const nowPlaying = useNowPlayingStore()
 

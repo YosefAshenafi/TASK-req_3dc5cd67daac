@@ -60,8 +60,7 @@ describe('PlaylistDetailView', () => {
     })
 
     const wrapper = mount(PlaylistDetailView)
-    const shareBtn = wrapper.find('button:has-text("SHARE789")') ||
-      wrapper.findAll('button').find(b => b.text().includes('SHARE789'))
+    const shareBtn = wrapper.findAll('button').find(b => b.text().includes('SHARE789'))
 
     if (shareBtn) {
       await shareBtn.trigger('click')

@@ -67,7 +67,7 @@ import { ref, onMounted } from 'vue'
 import api from '@/api/axios'
 
 const data = ref(null)
-const isLoading = ref(false)
+const isLoading = ref(true)
 
 async function load() {
   isLoading.value = true

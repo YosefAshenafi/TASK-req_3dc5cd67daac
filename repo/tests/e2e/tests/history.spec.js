@@ -51,8 +51,7 @@ test.describe('Play History', () => {
 
     // Play an asset from the library
     await page.goto(BASE + '/library')
-    await page.click('text=Browse All').catch(() => {})
-    await page.waitForTimeout(1000)
+    await page.waitForSelector('[class*="grid"]', { timeout: 10000 }).catch(() => {})
 
     const playBtn = page.locator('button[aria-label*="Play"]').first()
     const playVisible = await playBtn.isVisible().catch(() => false)

@@ -337,12 +337,12 @@ class DeviceEventBufferingTest extends TestCase
         $entry = $service->enqueue($device->id, 'gate_open', [], 'idem-fail-001', 1);
 
         // Remove the device to trigger ModelNotFoundException in ingestEntry.
-        // FK checks are disabled to bypass the RESTRICT constraint on the buffer FK.
+        // FK checks must stay off during the job: MySQL re-validates FK constraints
+        // on any UPDATE to a row that references a now-deleted parent row.
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
         DB::table('devices')->where('id', $device->id)->delete();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
-
         FlushBufferedDeviceEventsJob::dispatchSync();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         $entry->refresh();
         $this->assertSame('failed', $entry->delivery_state);

@@ -20,16 +20,29 @@ class MimeValidationServiceTest extends TestCase
 
     public function test_valid_mp3_passes_validation(): void
     {
-        $file = UploadedFile::fake()->create('test.mp3', 512, 'audio/mpeg');
+        // \xFF\xF3 is an MPEG sync word finfo detects as audio/mpeg
+        $tmpFile = tempnam(sys_get_temp_dir(), 'test_mp3_');
+        file_put_contents($tmpFile, "\xFF\xF3" . str_repeat("\x00", 512));
+        $file = new UploadedFile($tmpFile, 'test.mp3', 'audio/mpeg', null, true);
+
         $result = $this->service->validate($file);
+        unlink($tmpFile);
 
         $this->assertTrue($result['valid']);
     }
 
     public function test_file_exceeding_mp3_size_limit_fails(): void
     {
-        $file = UploadedFile::fake()->create('big.mp3', 30 * 1024, 'audio/mpeg');
+        // Small file with valid MP3 magic; mock getSize() to simulate an oversized upload
+        $tmpFile = tempnam(sys_get_temp_dir(), 'test_big_mp3_');
+        file_put_contents($tmpFile, "\xFF\xF3" . str_repeat("\x00", 100));
+
+        $file = $this->createMock(UploadedFile::class);
+        $file->method('getPathname')->willReturn($tmpFile);
+        $file->method('getSize')->willReturn(30 * 1024 * 1024);
+
         $result = $this->service->validate($file);
+        unlink($tmpFile);
 
         $this->assertFalse($result['valid']);
         $this->assertStringContainsString('MB limit', $result['error']);

@@ -129,7 +129,7 @@ class PlayHistoryTest extends TestCase
             ->postJson('/api/play-history', ['asset_id' => $asset->id])
             ->assertStatus(201);
 
-        Queue::assertDispatched(ComputeUserRecommendationsJob::class);
+        Queue::assertPushed(ComputeUserRecommendationsJob::class);
     }
 
     // ---------------------------------------------------------------

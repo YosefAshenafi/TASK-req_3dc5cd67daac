@@ -36,11 +36,15 @@ test.describe('Admin Console', () => {
     await loginAsAdmin(page)
     await page.goto(BASE + '/admin/users')
     await page.waitForSelector('table')
-    const freezeButton = page.locator('button:has-text("Freeze")').first()
-    if (await freezeButton.isVisible()) {
+    // Target the technician row by role text to avoid freezing admin or the shared 'user' test account
+    const freezeButton = page.locator('tr')
+      .filter({ has: page.locator('span.badge:has-text("technician")') })
+      .locator('button:has-text("Freeze")')
+      .first()
+    if (await freezeButton.isVisible().catch(() => false)) {
       await freezeButton.click()
       await page.fill('input[type="number"]', '72')
-      await page.click('button:has-text("Freeze"):not(:has-text("User"))')
+      await page.click('button.btn-primary')
       await page.waitForTimeout(500)
     }
   })
@@ -50,6 +54,7 @@ test.describe('Admin Console', () => {
     await page.fill('input#username', 'user')
     await page.fill('input[type="password"]', 'Password123!')
     await page.click('button[type="submit"]')
+    await expect(page).toHaveURL(/\/library/, { timeout: 10000 })
     await page.goto(BASE + '/admin')
     await expect(page).toHaveURL(/\/library/)
   })

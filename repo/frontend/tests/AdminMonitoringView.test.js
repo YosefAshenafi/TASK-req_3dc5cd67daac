@@ -2,25 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import AdminMonitoringView from '@/views/admin/AdminMonitoringView.vue'
 
-const mockData = {
-  health: { database: 'healthy', queue: 'healthy' },
-  queue: { pending_jobs: 3, failed_jobs: 0 },
-  recommendations: {
-    engine_status: 'active',
-    window_seconds: 300,
-    p95_latency_ms: 120.5,
-    hit_rate: 0.32,
-    p95_threshold_ms: 800.0,
-    hit_rate_threshold: 0.10,
-  },
-  api_errors: { last_hour: 2 },
-  device_ingestion: { received_count: 10, late_count: 1, buffered_count: 0, duplicate_count: 0 },
-  timestamp: '2026-05-21T10:00:00+00:00',
-}
-
 vi.mock('@/api/axios', () => ({
   default: {
-    get: vi.fn().mockResolvedValue({ data: { data: mockData } }),
+    get: vi.fn().mockResolvedValue({
+      data: {
+        data: {
+          health: { database: 'healthy', queue: 'healthy' },
+          queue: { pending_jobs: 3, failed_jobs: 0 },
+          recommendations: {
+            engine_status: 'active',
+            window_seconds: 300,
+            p95_latency_ms: 120.5,
+            hit_rate: 0.32,
+            p95_threshold_ms: 800.0,
+            hit_rate_threshold: 0.10,
+          },
+          api_errors: { last_hour: 2 },
+          device_ingestion: { received_count: 10, late_count: 1, buffered_count: 0, duplicate_count: 0 },
+          timestamp: '2026-05-21T10:00:00+00:00',
+        },
+      },
+    }),
   },
 }))
 

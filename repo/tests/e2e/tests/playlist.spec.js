@@ -55,7 +55,7 @@ test.describe('Playlists', () => {
     await page.click('button:has-text("Redeem Code")')
     await expect(page.locator('h2:has-text("Redeem")')).toBeVisible()
     await page.fill('input#share-code', 'DEMO1234')
-    await page.click('button:has-text("Redeem")')
+    await page.click('button[type="submit"]')
     await page.waitForTimeout(1000)
   })
 })

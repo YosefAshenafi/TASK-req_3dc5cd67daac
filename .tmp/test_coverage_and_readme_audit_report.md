@@ -1,12 +1,11 @@
 # Test Coverage Audit
 
-## Scope and Method
-- Static inspection only (no execution).
-- Audit scope limited to: `repo/backend/routes/api.php`, `repo/backend/bootstrap/app.php`, `repo/backend/tests/**`, `repo/frontend/tests/**`, `repo/tests/e2e/tests/**`, `repo/run_tests.sh`, `repo/README.md`.
-- Project type declaration found in README top section: **Fullstack Web Application** (`repo/README.md`).
+## Project Type Detection
+- Declared in `repo/README.md:3`: `Project Type: Fullstack Web Application`.
+- Effective type: **fullstack**.
 
 ## Backend Endpoint Inventory
-Resolved from `repo/backend/bootstrap/app.php` (`apiPrefix: 'api'`) and `repo/backend/routes/api.php`.
+Source: `repo/backend/routes/api.php` + API prefix from `repo/backend/bootstrap/app.php` (`apiPrefix: 'api'`).
 
 1. `GET /api/health`
 2. `POST /api/auth/login`
@@ -45,199 +44,153 @@ Resolved from `repo/backend/bootstrap/app.php` (`apiPrefix: 'api'`) and `repo/ba
 35. `POST /api/device/events`
 
 ## API Test Mapping Table
-| Endpoint | Covered | Test type | Test files | Evidence |
-|---|---|---|---|---|
-| `GET /api/health` | yes | true no-mock HTTP | `repo/backend/tests/Feature/HealthTest.php` | `test_health_endpoint_returns_ok` |
-| `POST /api/auth/login` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AuthTest.php` | `test_login_with_valid_credentials` |
-| `POST /api/auth/logout` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AuthTest.php` | `test_logout_invalidates_session` |
-| `GET /api/auth/me` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AuthTest.php` | `test_me_returns_authenticated_user` |
-| `GET /api/assets` | yes | true no-mock HTTP | `repo/backend/tests/Feature/RecommendationTest.php`, `repo/backend/tests/Feature/AssetNoMockHttpTest.php` | `test_tag_filter_api_returns_matching_assets`; `test_owner_delete_removes_asset_from_list` |
-| `POST /api/assets` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AssetNoMockHttpTest.php` | `test_upload_mp3_creates_db_record_and_returns_201` |
-| `GET /api/assets/{asset}` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AssetVisibilityTest.php` | `test_pending_asset_visible_to_owner` |
-| `DELETE /api/assets/{asset}` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AssetNoMockHttpTest.php` | `test_owner_can_delete_own_asset` |
-| `GET /api/favorites` | yes | true no-mock HTTP | `repo/backend/tests/Feature/FavoriteTest.php` | `test_favorites_list_returns_only_owner_favorites` |
-| `POST /api/favorites` | yes | true no-mock HTTP | `repo/backend/tests/Feature/FavoriteTest.php` | `test_add_favorite_success_returns_201` |
-| `DELETE /api/favorites/{favorite}` | yes | true no-mock HTTP | `repo/backend/tests/Feature/FavoriteTest.php` | `test_delete_favorite_owner_succeeds` |
-| `GET /api/playlists` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlaylistShareCodeTest.php` | `test_share_code_present_in_playlist_index` |
-| `POST /api/playlists` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlaylistTest.php` | `test_create_playlist` |
-| `POST /api/playlists/redeem` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlaylistShareCodeTest.php` | `test_redeem_valid_share_code_returns_playlist` |
-| `GET /api/playlists/{playlist}` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlaylistTest.php` | `test_show_playlist_forbidden_for_other_user` |
-| `PATCH /api/playlists/{playlist}` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlaylistTest.php` | `test_update_playlist_success` |
-| `DELETE /api/playlists/{playlist}` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlaylistTest.php` | `test_delete_playlist_forbidden_for_other_user` |
-| `POST /api/playlists/{playlist}/items` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlaylistTest.php` | `test_add_item_to_playlist` |
-| `DELETE /api/playlists/{playlist}/items/{item}` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlaylistTest.php` | `test_remove_item_from_playlist_success` |
-| `GET /api/play-history` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlayHistoryNoMockHttpTest.php` | `test_list_returns_only_authenticated_users_entries` |
-| `POST /api/play-history` | yes | true no-mock HTTP | `repo/backend/tests/Feature/PlayHistoryNoMockHttpTest.php` | `test_store_creates_db_entry_and_returns_201` |
-| `GET /api/recommendations` | yes | true no-mock HTTP | `repo/backend/tests/Feature/RecommendationTest.php` | `test_recommendations_return_expected_structure` |
-| `GET /api/admin/users` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AdminTest.php` | `test_admin_users_list_accessible_by_admin` |
-| `PATCH /api/admin/users/{user}/freeze` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AdminTest.php` | `test_admin_freeze_user` |
-| `PATCH /api/admin/users/{user}/blacklist` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AdminTest.php` | `test_admin_blacklist_user` |
-| `DELETE /api/admin/users/{user}` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AdminTest.php` | `test_admin_delete_user_soft_deletes` |
-| `GET /api/admin/assets` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AdminAssetTest.php` | `test_admin_asset_list_returns_200_for_admin` |
-| `PATCH /api/admin/assets/{asset}/approve` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AdminAssetTest.php` | `test_admin_approve_sets_status_to_approved` |
-| `PATCH /api/admin/assets/{asset}/reject` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AdminAssetTest.php` | `test_admin_reject_sets_status_to_rejected` |
-| `GET /api/admin/dashboard` | yes | true no-mock HTTP | `repo/backend/tests/Feature/AdminTest.php` | `test_admin_dashboard_accessible_by_admin` |
-| `GET /api/admin/monitoring` | yes | true no-mock HTTP | `repo/backend/tests/Feature/MonitoringTest.php` | `test_monitoring_returns_full_structure` |
-| `POST /api/admin/device-replays` | yes | true no-mock HTTP | `repo/backend/tests/Feature/DeviceEventTest.php` | `test_admin_can_create_replay_audit` |
-| `GET /api/technician/devices` | yes | true no-mock HTTP | `repo/backend/tests/Feature/TechnicianDevicesTest.php` | `test_devices_returns_200_for_technician` |
-| `GET /api/technician/events` | yes | true no-mock HTTP | `repo/backend/tests/Feature/TechnicianDevicesTest.php` | `test_events_returns_200_for_technician` |
-| `POST /api/device/events` | yes | true no-mock HTTP | `repo/backend/tests/Feature/DeviceEventTest.php` | `test_ingest_creates_event_with_received_status` |
+All 35 endpoints are covered by HTTP tests using Laravel HTTP helpers (`getJson/postJson/patchJson/deleteJson`) in backend tests.
+
+Representative endpoint-to-test evidence:
+- `GET /api/health` → `repo/backend/tests/Feature/HealthTest.php:16`, `repo/backend/tests/Unit/StructuredLoggerTest.php:29`
+- `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` → `repo/backend/tests/Feature/AuthTest.php:25,107,90`
+- `GET/POST/DELETE /api/assets...` → `repo/backend/tests/Feature/AssetTest.php`, `AssetNoMockHttpTest.php`, `AssetVisibilityTest.php`
+- `GET/POST /api/play-history` → `repo/backend/tests/Feature/PlayHistoryTest.php`, `PlayHistoryNoMockHttpTest.php`
+- `GET /api/recommendations` → `repo/backend/tests/Feature/RecommendationTest.php`
+- `GET/PATCH/DELETE /api/admin/users...` → `repo/backend/tests/Feature/AdminTest.php`
+- `GET/PATCH /api/admin/assets...` → `repo/backend/tests/Feature/AdminAssetTest.php`
+- `GET /api/admin/monitoring` → `repo/backend/tests/Feature/MonitoringTest.php`
+- `POST /api/admin/device-replays`, `POST /api/device/events` → `repo/backend/tests/Feature/DeviceEventTest.php`
+- `GET /api/technician/devices`, `GET /api/technician/events` → `repo/backend/tests/Feature/TechnicianDevicesTest.php`
 
 ## API Test Classification
-1. True No-Mock HTTP
-- `repo/backend/tests/Feature/HealthTest.php`
-- `repo/backend/tests/Feature/AuthTest.php`
-- `repo/backend/tests/Feature/FavoriteTest.php`
-- `repo/backend/tests/Feature/PlaylistTest.php`
-- `repo/backend/tests/Feature/PlaylistShareCodeTest.php`
-- `repo/backend/tests/Feature/RecommendationTest.php`
-- `repo/backend/tests/Feature/AdminTest.php`
-- `repo/backend/tests/Feature/AdminAssetTest.php`
-- `repo/backend/tests/Feature/MonitoringTest.php`
-- `repo/backend/tests/Feature/TechnicianDevicesTest.php`
-- `repo/backend/tests/Feature/DeviceEventTest.php`
-- `repo/backend/tests/Feature/AssetVisibilityTest.php`
-- `repo/backend/tests/Feature/AssetNoMockHttpTest.php`
-- `repo/backend/tests/Feature/PlayHistoryNoMockHttpTest.php`
+1. **True No-Mock HTTP**
+- Present for all route families; explicit no-mock suites:
+  - `repo/backend/tests/Feature/AssetNoMockHttpTest.php`
+  - `repo/backend/tests/Feature/PlayHistoryNoMockHttpTest.php`
 
-2. HTTP with Mocking
-- `repo/backend/tests/Feature/AssetTest.php` (uses `Storage::fake('local')`, `Queue::fake()` in `setUp()`)
-- `repo/backend/tests/Feature/PlayHistoryTest.php` (uses `Queue::fake()` in `setUp()`)
+2. **HTTP with Mocking**
+- `repo/backend/tests/Feature/AssetTest.php` uses `Storage::fake('local')` and `Queue::fake()` (`:32-33`).
+- `repo/backend/tests/Feature/PlayHistoryTest.php` uses `Queue::fake()` (`:27`).
 
-3. Non-HTTP (unit/integration without HTTP)
-- Backend unit: `repo/backend/tests/Unit/*.php`
-- Frontend unit: `repo/frontend/tests/*.test.js`
-- E2E browser tests: `repo/tests/e2e/tests/*.spec.js`
+3. **Non-HTTP (unit/integration without HTTP)**
+- Direct middleware invocation in `repo/backend/tests/Unit/StructuredLoggerTest.php` (`handle(...)` direct calls).
+- Service-level unit tests in `repo/backend/tests/Unit/*ServiceTest.php`.
 
 ## Mock Detection
-- Backend HTTP with mocking:
-  - `Storage::fake('local')` at `repo/backend/tests/Feature/AssetTest.php:31`.
-  - `Queue::fake()` at `repo/backend/tests/Feature/AssetTest.php:32`.
-  - `Queue::fake()` at `repo/backend/tests/Feature/PlayHistoryTest.php:27`.
-- Frontend unit mocking (expected for unit isolation):
-  - `vi.mock('@/stores/auth', ...)` at `repo/frontend/tests/router.test.js:8`.
-  - `vi.mock('@/api/axios', ...)` in multiple files (e.g., `repo/frontend/tests/LoginView.test.js:6`, `repo/frontend/tests/searchStore.test.js:6`).
-  - Component-level mocks in views tests (e.g., `repo/frontend/tests/PlaylistsView.test.js:17`, `:21`).
+- Backend:
+  - `Storage::fake('local')` at `repo/backend/tests/Feature/AssetTest.php:32`
+  - `Queue::fake()` at `repo/backend/tests/Feature/AssetTest.php:33`, `repo/backend/tests/Feature/PlayHistoryTest.php:27`
+- Frontend unit tests:
+  - multiple `vi.mock(...)` entries, e.g. `repo/frontend/tests/router.test.js:8`, `LoginView.test.js:6`, `AdminUsersView.test.js:17`
 
 ## Coverage Summary
 - Total endpoints: **35**
 - Endpoints with HTTP tests: **35**
-- Endpoints with TRUE no-mock HTTP tests: **35**
-- HTTP coverage: **100.00%**
-- True API coverage: **100.00%**
+- Endpoints with TRUE no-mock tests: **35**
+- HTTP coverage: **100%**
+- True API coverage: **100%**
 
 ## Unit Test Summary
 ### Backend Unit Tests
-- Files:
-  - `repo/backend/tests/Unit/DeviceApiKeyAuthTest.php`
-  - `repo/backend/tests/Unit/StructuredLoggerTest.php`
-  - `repo/backend/tests/Unit/RequireRoleMiddlewareTest.php`
-  - `repo/backend/tests/Unit/ScanHookServiceTest.php`
-  - `repo/backend/tests/Unit/MimeValidationServiceTest.php`
-  - `repo/backend/tests/Unit/DegradationServiceTest.php`
+- Files: `repo/backend/tests/Unit/DeviceApiKeyAuthTest.php`, `StructuredLoggerTest.php`, `RequireRoleMiddlewareTest.php`, `ScanHookServiceTest.php`, `DeviceEventBufferServiceTest.php`, `MimeValidationServiceTest.php`, `DegradationServiceTest.php`.
 - Modules covered:
-  - Auth/guards/middleware: `DeviceApiKeyAuth`, `RequireRole`, `StructuredLogger`
-  - Services: `ScanHookService`, `MimeValidationService`, `DegradationService`
+  - auth/guards/middleware: `DeviceApiKeyAuth`, `RequireRole`, `StructuredLogger`
+  - services: scan hook, buffer, mime validation, degradation logic
 - Important backend modules not directly unit-tested:
-  - Controllers under `repo/backend/app/Http/Controllers/**` (primarily feature/API-tested)
-  - Jobs under `repo/backend/app/Jobs/**` (behavior covered indirectly)
-  - No explicit repository abstraction layer detected.
+  - jobs in `repo/backend/app/Jobs/*.php`
+  - console commands in `repo/backend/app/Console/Commands/*.php`
 
 ### Frontend Unit Tests (STRICT REQUIREMENT)
-- Frontend unit test files present:
-  - Existing: `repo/frontend/tests/LoginView.test.js`, `AssetCard.test.js`, `HistoryView.test.js`, `FavoritesView.test.js`, `PlaylistsView.test.js`, `PlaylistDetailView.test.js`, `NowPlayingPanel.test.js`, `AdminDashboardView.test.js`, `AdminAssetsView.test.js`, `AdminMonitoringView.test.js`, `AdminUsersView.test.js`, `LibraryViewTags.test.js`, `TechnicianConsoleView.test.js`
-  - Newly added direct-module tests: `repo/frontend/tests/searchStore.test.js`, `router.test.js`, `StatCard.test.js`, `CreatePlaylistModal.test.js`, `RedeemCodeModal.test.js`
+- Frontend test files detected: 19 files under `repo/frontend/tests/` (`*.test.js`, plus `setup.js`).
 - Framework/tool evidence:
-  - Vitest imports (`describe`, `it`, `expect`, `vi`) across frontend tests.
-  - Vue Test Utils `mount(...)` usage in component tests.
-- Components/modules covered:
-  - Views: login/library/favorites/history/playlists/admin/technician view suite.
-  - Components: `AssetCard`, `NowPlayingPanel`, `StatCard`, `CreatePlaylistModal`, `RedeemCodeModal`.
-  - Core modules: `router/index.js`, `stores/search.js`.
-- Important frontend components/modules not tested (direct evidence absent):
-  - `repo/frontend/src/stores/nowPlaying.js`
-  - `repo/frontend/src/stores/auth.js`
-  - `repo/frontend/src/stores/playlist.js`
+  - Vitest imports (e.g. `repo/frontend/tests/LoginView.test.js:1`)
+  - Vue Test Utils imports (e.g. `repo/frontend/tests/AssetCard.test.js:2`)
+- Direct frontend module import/render evidence:
+  - components/views/stores/router imports from `@/` across test files (e.g. `AssetCard.test.js`, `HistoryView.test.js`, `router.test.js`).
+- Important frontend modules not directly tested:
   - `repo/frontend/src/App.vue`
-- **Frontend unit tests: PRESENT**
+  - `repo/frontend/src/main.js`
+  - `repo/frontend/src/views/AppLayout.vue`, `repo/frontend/src/views/admin/AdminLayout.vue`, `repo/frontend/src/views/TechnicianLayout.vue`
+
+**Frontend unit tests: PRESENT**
 
 ### Cross-Layer Observation
-- Backend API tests, frontend unit tests, and Playwright E2E tests are all present.
-- Testing is balanced across layers; frontend is no longer a weakly-covered side.
-
-## API Observability Check
-- Strong observability in most backend API tests: explicit method/path, payload/query, and status/content assertions.
-- Remaining weak spots:
-  - Some authorization-path checks are still status-only in feature files (e.g., `repo/backend/tests/Feature/AdminAssetTest.php` unauthorized/forbidden tests).
-  - E2E tests focus on UI behavior and do not expose raw API response contracts (acceptable for E2E type, but weaker for API observability).
+- Backend and frontend both have broad unit/API coverage; E2E suite exists under `repo/tests/e2e/tests/*.spec.js`.
+- No backend-heavy imbalance observed.
 
 ## Tests Check
-- Success paths: broadly covered across auth, assets, playlists, favorites, admin, technician, device ingestion, recommendations.
-- Failure paths and validation: broadly covered with 401/403/404/409/422 branches.
-- Edge cases: present (share code collisions, replay dedupe, monitoring/degradation assertions).
-- Integration boundaries:
-  - True no-mock HTTP coverage now exists for all endpoints.
-  - Mocked HTTP suites still exist in parallel (`AssetTest`, `PlayHistoryTest`) but do not negate no-mock endpoint evidence.
-- `run_tests.sh`:
-  - Docker-based orchestration (`docker compose`, `docker run`) is present, satisfying containerized execution intent.
-  - No host-level package manager commands required in script.
+- API observability is generally strong in backend HTTP tests (explicit method/path, request payloads, response assertions).
+- Some E2E checks are UI-state oriented and weaker on explicit request/response contract validation.
+- `run_tests.sh` check (`repo/run_tests.sh`):
+  - Docker-based orchestration: present.
+  - Runtime dependency install patterns (`composer install`, `npm ci`, `npm install`) are **not present** in current file.
 
-## Test Coverage Score (0-100)
-**93/100**
+## Test Coverage Score (0–100)
+**91**
 
 ## Score Rationale
-- + 35/35 endpoints have HTTP tests.
-- + 35/35 endpoints have explicit true no-mock HTTP coverage.
-- + Strong backend unit and frontend unit breadth with direct module/component tests.
-- + E2E suite exists for FE↔BE flows.
-- - Some tests still rely on status-only assertions in specific branches, reducing assertion depth in parts of suite.
-- - Mock-heavy duplicate HTTP suites remain and can mask confidence if treated alone.
+- Complete endpoint coverage with true no-mock API coverage.
+- Strong backend feature depth and substantial frontend unit coverage.
+- Score reduced for partial E2E observability depth and absence of direct unit tests for some jobs/commands.
 
 ## Key Gaps
-1. Strengthen status-only API assertions in selected authorization/error tests (`repo/backend/tests/Feature/AdminAssetTest.php`, portions of `AdminTest.php`).
-2. Add direct unit tests for remaining core frontend stores (`auth`, `playlist`, `nowPlaying`) to reduce indirect-only coverage.
+1. E2E tests emphasize UI outcomes more than explicit API contract assertions.
+2. Direct unit coverage for jobs and console commands remains limited.
 
 ## Confidence & Assumptions
-- Confidence: **High** for endpoint inventory and endpoint-to-test mapping.
-- Confidence: **Medium-High** for execution-path no-mock classification based on static code evidence.
-- Assumption: API routes are exclusively declared in `repo/backend/routes/api.php` as wired by `repo/backend/bootstrap/app.php`.
+- Confidence: high for endpoint mapping and README gate checks.
+- Assumption: Laravel HTTP test helpers traverse real route handlers.
 
 ## Test Coverage Verdict
-**PASS**
+**PASS WITH GAPS**
 
 ---
 
 # README Audit
 
 ## README Location
-- Found at required path: `repo/README.md`.
+- `repo/README.md` exists.
 
-## High Priority Issues
-1. README includes manual DB setup steps (`docker compose exec backend php artisan db:seed --force`) as required startup/use step (`Seed demo accounts (required on first run)` and verification precondition). This violates strict “no manual DB setup” rule.
+## Hard Gate Evaluation
+### Formatting
+- PASS: readable markdown with clear sections/tables.
 
-## Medium Priority Issues
-1. None with hard operational impact beyond strict gate failure.
+### Startup Instructions
+- PASS: includes required `docker-compose up` form (`repo/README.md`, Running the Application).
 
-## Low Priority Issues
-1. Mixed `docker-compose` and `docker compose` command style; functionally valid but less consistent.
+### Access Method
+- PASS: URL and port explicitly provided (`http://localhost:8080`).
 
-## Hard Gate Failures
-1. **Environment Rules (STRICT): FAIL**
-- Manual DB setup is explicitly required in multiple sections of `repo/README.md`:
-  - “Seed demo accounts (required on first run)”
-  - “After starting the application and seeding ... verify key flows”
-  - “Run ... db:seed --force to create the following accounts”
+### Verification Method
+- PASS: API verification (`curl`) and Web flow are present (`repo/README.md`, Verification section).
 
-## README Verdict (PASS / PARTIAL PASS / FAIL)
-**FAIL**
+### Environment Rules (STRICT)
+- PASS from README content perspective:
+  - No `npm install`, `pip install`, `apt-get` commands in README instructions.
+  - No manual DB setup required in README; it states auto-seeding on first startup.
+  - Testing section explicitly states Docker-contained flow and no runtime dependency install.
+
+### Demo Credentials (Conditional)
+- PASS: Auth exists and credentials include role, email, username, password for all roles (`repo/README.md:117-121`).
 
 ## Engineering Quality
-- Tech stack clarity: strong.
-- Architecture explanation: adequate and readable.
-- Testing instructions: present and structured.
-- Security/roles and credentials: clearly documented.
-- Workflow guidance: clear sequence.
-- Presentation quality: clean markdown, good sectional organization.
+- Tech stack: clear.
+- Architecture: clear.
+- Testing instructions: clear and consistent with current intent.
+- Security/roles/workflows: clearly documented.
+- Presentation quality: strong.
 
-## README Audit Verdict
-**FAIL**
+## High Priority Issues
+- None.
+
+## Medium Priority Issues
+- None.
+
+## Low Priority Issues
+- None.
+
+## Hard Gate Failures
+- None.
+
+## README Verdict (PASS / PARTIAL PASS / FAIL)
+**PASS**
+
+## Final Verdicts
+- Test Coverage Audit: **PASS WITH GAPS**
+- README Audit: **PASS**

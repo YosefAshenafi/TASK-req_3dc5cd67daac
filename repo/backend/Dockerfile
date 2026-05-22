@@ -34,12 +34,14 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
+RUN composer install --no-scripts --no-autoloader --prefer-dist --no-interaction
 
 COPY . .
 
 RUN composer dump-autoload --optimize \
     && php artisan package:discover --ansi || true
+
+RUN sed -i 's|;listen = 127.0.0.1:9000|listen = 127.0.0.1:9001|' /usr/local/etc/php-fpm.d/www.conf
 
 RUN mkdir -p storage/framework/{sessions,views,cache} \
         storage/logs \

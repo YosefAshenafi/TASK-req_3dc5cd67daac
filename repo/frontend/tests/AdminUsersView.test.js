@@ -8,16 +8,19 @@ const mockUsers = [
   { id: 3, name: 'Carol Banned', email: 'carol@example.com', role: 'technician', account_status: 'blacklisted' },
 ]
 
-const apiMock = {
+const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
   patch: vi.fn(),
   delete: vi.fn(),
-}
+}))
 
 vi.mock('@/api/axios', () => ({ default: apiMock }))
 
 describe('AdminUsersView', () => {
   beforeEach(() => {
+    apiMock.get.mockClear()
+    apiMock.patch.mockClear()
+    apiMock.delete.mockClear()
     apiMock.get.mockResolvedValue({ data: { data: mockUsers } })
     apiMock.patch.mockResolvedValue({})
     apiMock.delete.mockResolvedValue({})

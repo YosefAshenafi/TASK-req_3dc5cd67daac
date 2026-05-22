@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import AdminDashboardView from '@/views/admin/AdminDashboardView.vue'
 
 const mockStats = {
@@ -16,7 +17,7 @@ vi.mock('@/components/StatCard.vue', () => ({
   },
 }))
 
-const apiMock = { get: vi.fn() }
+const apiMock = vi.hoisted(() => ({ get: vi.fn() }))
 vi.mock('@/api/axios', () => ({ default: apiMock }))
 
 describe('AdminDashboardView', () => {
@@ -32,9 +33,10 @@ describe('AdminDashboardView', () => {
   })
 
   describe('loading state', () => {
-    it('shows skeleton loaders while loading', () => {
+    it('shows skeleton loaders while loading', async () => {
       apiMock.get.mockReturnValue(new Promise(() => {}))
       const wrapper = mount(AdminDashboardView)
+      await nextTick()
       expect(wrapper.find('.skeleton').exists()).toBe(true)
     })
 

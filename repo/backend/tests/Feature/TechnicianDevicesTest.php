@@ -117,22 +117,24 @@ class TechnicianDevicesTest extends TestCase
 
         DB::table('device_events')->insert([
             'device_id' => $device->id,
+            'idempotency_key' => 'idem-tech-test-001',
             'event_type' => 'gate_open',
             'sequence' => 1,
             'status' => 'received',
             'received_at' => now(),
-            'event_payload' => '{}',
+            'payload' => '{}',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
         DB::table('device_events')->insert([
             'device_id' => $device->id,
+            'idempotency_key' => 'idem-tech-test-002',
             'event_type' => 'gate_open',
             'sequence' => 2,
             'status' => 'late',
             'received_at' => now(),
-            'event_payload' => '{}',
+            'payload' => '{}',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -180,11 +182,12 @@ class TechnicianDevicesTest extends TestCase
 
         DB::table('device_events')->insert([
             'device_id'      => $device->id,
+            'idempotency_key' => 'idem-tech-test-003',
             'event_type'     => 'gate_open',
             'sequence'       => 10,
             'status'         => 'received',
             'received_at'    => now(),
-            'event_payload'  => '{}',
+            'payload'  => '{}',
             'created_at'     => now(),
             'updated_at'     => now(),
         ]);
@@ -217,11 +220,12 @@ class TechnicianDevicesTest extends TestCase
 
         DB::table('device_events')->insert([
             'device_id'     => $device->id,
+            'idempotency_key' => 'idem-tech-test-004',
             'event_type'    => 'gate_close',
             'sequence'      => 1,
             'status'        => 'received',
             'received_at'   => now(),
-            'event_payload' => '{}',
+            'payload' => '{}',
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);
@@ -245,11 +249,12 @@ class TechnicianDevicesTest extends TestCase
 
         DB::table('device_events')->insert([
             'device_id'     => $device->id,
+            'idempotency_key' => 'idem-tech-test-005',
             'event_type'    => 'gate_open',
             'sequence'      => 2,
             'status'        => 'buffered',
             'received_at'   => now(),
-            'event_payload' => '{}',
+            'payload' => '{}',
             'created_at'    => now(),
             'updated_at'    => now(),
         ]);

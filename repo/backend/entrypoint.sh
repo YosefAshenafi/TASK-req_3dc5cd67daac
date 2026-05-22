@@ -36,8 +36,28 @@ fi
 
 if [[ "${1}" != "php" || "${2}" != "artisan" ]]; then
     php artisan migrate --force --no-interaction 2>&1 || true
-    # NOTE: seeding is NOT run automatically on startup to prevent data loss on restart.
-    # To seed demo credentials, run:  docker compose exec backend php artisan db:seed --force
+
+    # Seed demo data on first startup only (when users table is empty).
+    # Guard against seeding before migrations complete by checking users table exists.
+    users_table=$(php -r "
+        \$pdo = new PDO('mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}', '${DB_USERNAME}', '${DB_PASSWORD}');
+        echo \$pdo->query('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=\"${DB_DATABASE}\" AND table_name=\"users\"')->fetchColumn();
+    " 2>/dev/null || echo "0")
+    if [ "$users_table" = "1" ]; then
+        user_count=$(php -r "
+            \$pdo = new PDO('mysql:host=${DB_HOST};port=${DB_PORT};dbname=${DB_DATABASE}', '${DB_USERNAME}', '${DB_PASSWORD}');
+            echo \$pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+        " 2>/dev/null || echo "1")
+        if [ "$user_count" = "0" ]; then
+            echo "First startup — seeding demo data..."
+            php artisan db:seed --force 2>&1 || true
+        else
+            echo "Database already has data ($user_count users) — skipping seed."
+        fi
+    else
+        echo "Migrations not yet complete — skipping seed."
+    fi
+
     php artisan storage:link --force 2>&1 || true
     php artisan config:cache 2>&1 || true
     php artisan route:cache 2>&1 || true

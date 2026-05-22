@@ -11,15 +11,17 @@ async function loginAsUser(page) {
 }
 
 test.describe('Library', () => {
-  test('shows browse all button on initial load', async ({ page }) => {
+  test('shows asset grid on initial load', async ({ page }) => {
     await loginAsUser(page)
-    await expect(page.locator('text=Browse All')).toBeVisible()
+    // Assets auto-load on mount; wait for the grid to appear
+    await page.waitForSelector('[class*="grid"]', { timeout: 10000 })
+    const cards = await page.locator('.card').count()
+    expect(cards).toBeGreaterThan(0)
   })
 
-  test('loads all assets when Browse All clicked', async ({ page }) => {
+  test('asset cards are visible without any interaction', async ({ page }) => {
     await loginAsUser(page)
-    await page.click('text=Browse All')
-    await page.waitForSelector('[class*="grid"]')
+    await page.waitForSelector('[class*="grid"]', { timeout: 10000 })
     const cards = await page.locator('.card').count()
     expect(cards).toBeGreaterThan(0)
   })
@@ -33,7 +35,7 @@ test.describe('Library', () => {
 
   test('sort by most played works', async ({ page }) => {
     await loginAsUser(page)
-    await page.selectOption('select', 'most_played')
+    await page.selectOption('[data-testid="sort-select"]', 'most_played')
     await page.waitForTimeout(1000)
   })
 
@@ -47,7 +49,7 @@ test.describe('Library', () => {
     const tagInput = page.locator('[data-testid="tag-input"]')
     await tagInput.fill('announcement')
     await tagInput.press('Enter')
-    await expect(page.locator('text=announcement')).toBeVisible()
+    await expect(page.locator('.bg-brand-100').filter({ hasText: 'announcement' })).toBeVisible()
   })
 
   test('removing a tag chip clears it', async ({ page }) => {
@@ -55,7 +57,7 @@ test.describe('Library', () => {
     const tagInput = page.locator('[data-testid="tag-input"]')
     await tagInput.fill('safety')
     await tagInput.press('Enter')
-    const chip = page.locator('span:has-text("safety")')
+    const chip = page.locator('.bg-brand-100').filter({ hasText: 'safety' })
     await expect(chip).toBeVisible()
     await chip.locator('button').click()
     await expect(chip).not.toBeVisible()
@@ -68,11 +70,10 @@ test.describe('Library', () => {
 
   test('recommended sort renders recommendation reason on cards', async ({ page }) => {
     await loginAsUser(page)
-    // Browse all first so we have a results grid
-    await page.click('text=Browse All')
-    await page.waitForSelector('[class*="grid"]')
+    // Library auto-loads on mount
+    await page.waitForSelector('[class*="grid"]', { timeout: 10000 })
     // Switch to recommended sort
-    await page.selectOption('select', 'recommended')
+    await page.selectOption('[data-testid="sort-select"]', 'recommended')
     await page.waitForTimeout(1500)
     // Recommendation reasons are rendered in AssetCard when present
     // The text will be either "Based on your favorites: ..." or

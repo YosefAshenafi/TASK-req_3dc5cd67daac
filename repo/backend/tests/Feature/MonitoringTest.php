@@ -63,7 +63,7 @@ class MonitoringTest extends TestCase
         $response = $this->actingAs($admin)->getJson('/api/admin/monitoring');
         $response->assertStatus(200)
             ->assertJsonPath('data.recommendations.window_seconds', 300)
-            ->assertJsonPath('data.recommendations.p95_threshold_ms', 800.0)
+            ->assertJsonPath('data.recommendations.p95_threshold_ms', 800)
             ->assertJsonPath('data.recommendations.hit_rate_threshold', 0.10);
     }
 

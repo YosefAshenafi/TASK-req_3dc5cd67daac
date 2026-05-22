@@ -2,12 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useSearchStore } from '@/stores/search'
 
-const apiMock = { get: vi.fn() }
+const apiMock = vi.hoisted(() => ({ get: vi.fn() }))
 vi.mock('@/api/axios', () => ({ default: apiMock }))
 
 describe('searchStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    apiMock.get.mockClear()
     apiMock.get.mockResolvedValue({ data: { data: [], meta: { total: 0, per_page: 20 } } })
   })
 

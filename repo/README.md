@@ -68,13 +68,7 @@ docker-compose logs -f backend
 
 Access the application at: **http://localhost:8080**
 
-> **Note:** Database migrations run automatically on container startup. Seeding is NOT run automatically to prevent data loss on restart.
-
-### Seed demo accounts (required on first run)
-
-```bash
-docker compose exec backend php artisan db:seed --force
-```
+> **Note:** Database migrations run automatically on container startup. Demo data (accounts, assets, playlists) is seeded automatically on the first startup when the database is empty — no manual seeding step is required.
 
 To stop:
 
@@ -87,17 +81,17 @@ To reset data:
 ```bash
 docker compose down -v
 docker compose up --build -d
-docker compose exec backend php artisan db:seed --force
 ```
 
 ---
 
 ## Testing
 
-Run all test suites (PHPUnit + Vitest + Playwright) inside containers:
+All tests execute exclusively inside Docker containers — no host-local PHP, Node, or other runtime tooling is required or used. **Test containers and images must already contain all required dependencies**; no dependency installation is performed at runtime. `./run_tests.sh` builds all images first (baking in every dependency), then runs each suite against those pre-built images.
+
+Run all test suites (PHPUnit + Vitest + Playwright):
 
 ```bash
-chmod +x run_tests.sh
 ./run_tests.sh
 ```
 
@@ -118,13 +112,13 @@ docker compose run --rm backend php artisan test --env=testing
 
 ## Seeded Credentials
 
-Run `docker compose exec backend php artisan db:seed --force` to create the following accounts:
+Demo accounts are created automatically on first startup. No manual seeding is required.
 
-| Role | Username | Password |
-|---|---|---|
-| Administrator | `admin` | `Password123!` |
-| Regular User | `user` | `Password123!` |
-| Field Technician | `tech` | `Password123!` |
+| Role | Email | Username | Password |
+|---|---|---|---|
+| Administrator | `admin@smartpark.local` | `admin` | `Password123!` |
+| Regular User | `user@smartpark.local` | `user` | `Password123!` |
+| Field Technician | `tech@smartpark.local` | `tech` | `Password123!` |
 
 Login uses **username** (not email address).
 
@@ -138,7 +132,7 @@ Authorization: Bearer smartpark-device-key-abc123
 
 ## Verification
 
-After starting the application and seeding (`docker compose exec backend php artisan db:seed --force`), verify key flows:
+After starting the application, verify key flows:
 
 ### API health check
 

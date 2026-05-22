@@ -84,7 +84,7 @@ class AssetTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $file = UploadedFile::fake()->create('test.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('test.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -212,7 +212,7 @@ class AssetTest extends TestCase
             }
         });
 
-        $file = UploadedFile::fake()->create('clean.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('clean.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -232,7 +232,7 @@ class AssetTest extends TestCase
     public function test_asset_upload_stores_db_record_as_pending(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('track.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('track.mp3');
 
         $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -253,7 +253,7 @@ class AssetTest extends TestCase
     public function test_asset_upload_dispatches_thumbnail_and_index_jobs(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('track.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('track.mp3');
 
         $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -263,14 +263,14 @@ class AssetTest extends TestCase
             ])
             ->assertStatus(201);
 
-        Queue::assertDispatched(GenerateThumbnailsJob::class);
-        Queue::assertDispatched(IndexAssetJob::class);
+        Queue::assertPushed(GenerateThumbnailsJob::class);
+        Queue::assertPushed(IndexAssetJob::class);
     }
 
     public function test_asset_upload_stores_optional_description(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('clip.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('clip.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -305,7 +305,7 @@ class AssetTest extends TestCase
     public function test_asset_upload_accepts_pdf(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('document.pdf', 512, 'application/pdf');
+        $file = $this->fakePdfFile('document.pdf');
 
         $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -471,7 +471,7 @@ class AssetTest extends TestCase
     public function test_asset_upload_missing_title_error_body_contains_title_key(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('track.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('track.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', ['file' => $file]);
@@ -489,7 +489,7 @@ class AssetTest extends TestCase
             public function scan(string $filePath): bool { return false; }
         });
 
-        $file = UploadedFile::fake()->create('track.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('track.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -686,7 +686,7 @@ class AssetTest extends TestCase
     public function test_asset_upload_with_no_tags_stores_empty_array(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('track.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('track.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -704,7 +704,7 @@ class AssetTest extends TestCase
     public function test_asset_upload_succeeds_when_duration_is_omitted(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('track.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('track.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', [

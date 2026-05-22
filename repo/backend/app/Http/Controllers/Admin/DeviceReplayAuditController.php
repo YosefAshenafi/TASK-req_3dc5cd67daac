@@ -27,6 +27,7 @@ class DeviceReplayAuditController extends Controller
             'audit_key' => $auditKey,
             'device_id' => $data['device_id'],
             'triggered_by' => $request->user()->id,
+            'triggered_at' => now(),
             'scope' => $data['scope'] ?? null,
             'reason' => $data['reason'] ?? null,
         ]);

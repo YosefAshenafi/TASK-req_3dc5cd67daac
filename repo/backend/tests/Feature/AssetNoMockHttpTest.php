@@ -33,7 +33,7 @@ class AssetNoMockHttpTest extends TestCase
     public function test_upload_mp3_creates_db_record_and_returns_201(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('clip.mp3', 512, 'audio/mpeg');
+        $file = $this->fakeAudioFile('clip.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -60,7 +60,7 @@ class AssetNoMockHttpTest extends TestCase
     public function test_upload_response_id_is_integer(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('track.mp3', 128, 'audio/mpeg');
+        $file = $this->fakeAudioFile('track.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -75,7 +75,7 @@ class AssetNoMockHttpTest extends TestCase
     public function test_upload_creates_search_index_entry(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('track.mp3', 128, 'audio/mpeg');
+        $file = $this->fakeAudioFile('track.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', [
@@ -109,7 +109,7 @@ class AssetNoMockHttpTest extends TestCase
     public function test_upload_missing_title_returns_422_with_title_error(): void
     {
         $user = User::factory()->create();
-        $file = UploadedFile::fake()->create('track.mp3', 128, 'audio/mpeg');
+        $file = $this->fakeAudioFile('track.mp3');
 
         $response = $this->actingAs($user)
             ->postJson('/api/assets', ['file' => $file]);

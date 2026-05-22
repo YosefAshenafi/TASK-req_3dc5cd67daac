@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import AdminAssetsView from '@/views/admin/AdminAssetsView.vue'
 
 const mockAssets = [
@@ -8,15 +9,17 @@ const mockAssets = [
   { id: 12, title: 'Rejected PDF', mime_type: 'application/pdf', status: 'rejected', created_at: '2026-05-03T00:00:00Z' },
 ]
 
-const apiMock = {
+const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
   patch: vi.fn(),
-}
+}))
 
 vi.mock('@/api/axios', () => ({ default: apiMock }))
 
 describe('AdminAssetsView', () => {
   beforeEach(() => {
+    apiMock.get.mockClear()
+    apiMock.patch.mockClear()
     apiMock.get.mockResolvedValue({ data: { data: mockAssets } })
     apiMock.patch.mockResolvedValue({})
   })
@@ -29,9 +32,10 @@ describe('AdminAssetsView', () => {
   })
 
   describe('loading state', () => {
-    it('shows skeleton loaders while loading', () => {
+    it('shows skeleton loaders while loading', async () => {
       apiMock.get.mockReturnValue(new Promise(() => {}))
       const wrapper = mount(AdminAssetsView)
+      await nextTick()
       expect(wrapper.find('.skeleton').exists()).toBe(true)
     })
 

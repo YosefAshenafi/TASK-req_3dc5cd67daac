@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE = process.env.BASE_URL || 'http://localhost:8080'
+const BASE = process.env.BASE_URL || 'http://localhost:3000'
 
 async function loginAsUser(page) {
   await page.goto(BASE + '/login')

@@ -66,7 +66,7 @@ Wait for services to be ready (~30 seconds on first run for DB migrations):
 docker-compose logs -f backend
 ```
 
-Access the application at: **http://localhost:8080**
+Access the application at: **http://localhost:3000**
 
 > **Note:** Database migrations run automatically on container startup. Demo data (accounts, assets, playlists) is seeded automatically on the first startup when the database is empty — no manual seeding step is required.
 
@@ -137,14 +137,14 @@ After starting the application, verify key flows:
 ### API health check
 
 ```bash
-curl http://localhost:8080/api/health
+curl http://localhost:3000/api/health
 # Expected: {"status":"ok","timestamp":"..."}
 ```
 
 ### Login and get session
 
 ```bash
-curl -c cookies.txt -X POST http://localhost:8080/api/auth/login \
+curl -c cookies.txt -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"user","password":"Password123!"}'
 # Expected: {"data":{"id":...,"username":"user","role":"user",...}}
@@ -154,14 +154,14 @@ curl -c cookies.txt -X POST http://localhost:8080/api/auth/login \
 
 ```bash
 curl -b cookies.txt -H "X-XSRF-TOKEN: $(grep XSRF cookies.txt | awk '{print $7}')" \
-  http://localhost:8080/api/recommendations
+  http://localhost:3000/api/recommendations
 # Expected: {"data":[{"id":...,"recommendation_reason":"..."},...]}
 ```
 
 ### Device event ingestion
 
 ```bash
-curl -X POST http://localhost:8080/api/device/events \
+curl -X POST http://localhost:3000/api/device/events \
   -H "Authorization: Bearer smartpark-device-key-abc123" \
   -H "Content-Type: application/json" \
   -d '{"device_id":1,"event_type":"gate_open","sequence":1,"event_payload":{}}'
@@ -170,7 +170,7 @@ curl -X POST http://localhost:8080/api/device/events \
 
 ### Web UI flow
 
-1. Open **http://localhost:8080** in a browser.
+1. Open **http://localhost:3000** in a browser.
 2. Log in with `user` / `Password123!`.
 3. Click **Browse All** → confirm asset cards load.
 4. Change the sort to **Recommended** → confirm `recommendation_reason` text appears on cards.

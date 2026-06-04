@@ -32,7 +32,10 @@ import { useNowPlayingStore } from '@/stores/nowPlaying'
 
 const store = useNowPlayingStore()
 const history = ref([])
-const isLoading = ref(false)
+// Start in the loading state so the view shows skeletons from the first paint
+// instead of briefly flashing the empty state before the fetch begins. This
+// keeps the loading indicator honest and avoids a transient "no history" frame.
+const isLoading = ref(true)
 
 onMounted(async () => {
   isLoading.value = true

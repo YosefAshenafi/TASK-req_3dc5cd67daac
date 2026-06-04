@@ -1,5 +1,13 @@
 <template>
-  <div class="card hover:shadow-md transition-shadow cursor-pointer group" @click="$emit('play', asset.id)">
+  <div
+    class="card hover:shadow-md transition-shadow cursor-pointer group relative"
+    data-testid="asset-card"
+    role="button"
+    tabindex="0"
+    :aria-label="`View details for ${asset.title}`"
+    @click="$emit('open', asset.id)"
+    @keyup.enter="$emit('open', asset.id)"
+  >
     <div class="flex items-start gap-3">
       <div class="w-12 h-12 rounded-lg flex items-center justify-center shrink-0" :class="iconBg">
         <svg class="w-6 h-6" :class="iconColor" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,6 +36,41 @@
         </div>
       </div>
     </div>
+
+    <!-- Action bar: Play and Favorite. Both stop propagation so they never
+         trigger the card's "open details" click. -->
+    <div class="flex items-center gap-2 mt-3 pt-3 border-t border-surface-100">
+      <button
+        type="button"
+        class="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800 rounded px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500"
+        :aria-label="`Play ${asset.title}`"
+        data-testid="play-btn"
+        @click.stop="$emit('play', asset.id)"
+      >
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4.018 14L14.41 8 4.018 2v12zM3 2.482a1 1 0 011.5-.866l9.518 5.5a1 1 0 010 1.732l-9.518 5.5A1 1 0 013 13.482v-11z" clip-rule="evenodd" />
+        </svg>
+        Play
+      </button>
+
+      <button
+        type="button"
+        class="ml-auto inline-flex items-center justify-center w-8 h-8 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500"
+        :class="isFavorite ? 'text-red-500 hover:text-red-600 bg-red-50' : 'text-surface-400 hover:text-red-500 hover:bg-surface-100'"
+        :aria-pressed="isFavorite ? 'true' : 'false'"
+        :aria-label="isFavorite ? `Remove ${asset.title} from favorites` : `Add ${asset.title} to favorites`"
+        :title="isFavorite ? 'Remove from favorites' : 'Add to favorites'"
+        data-testid="favorite-btn"
+        @click.stop="$emit('toggle-favorite', asset)"
+      >
+        <svg v-if="isFavorite" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+        </svg>
+        <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -36,9 +79,10 @@ import { computed } from 'vue'
 
 const props = defineProps({
   asset: { type: Object, required: true },
+  isFavorite: { type: Boolean, default: false },
 })
 
-defineEmits(['play'])
+defineEmits(['open', 'play', 'toggle-favorite'])
 
 const iconBg = computed(() => {
   const type = props.asset.mime_type || ''

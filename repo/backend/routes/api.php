@@ -62,6 +62,7 @@ Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(functi
     Route::get('/assets', [AdminAssetController::class, 'index']);
     Route::patch('/assets/{asset}/approve', [AdminAssetController::class, 'approve']);
     Route::patch('/assets/{asset}/reject', [AdminAssetController::class, 'reject']);
+    Route::patch('/assets/{asset}', [AdminAssetController::class, 'update']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
     Route::get('/monitoring', [MonitoringController::class, 'index']);

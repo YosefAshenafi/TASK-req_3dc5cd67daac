@@ -142,9 +142,20 @@
         v-for="asset in search.results"
         :key="asset.id"
         :asset="asset"
+        :is-favorite="favorites.isFavorite(asset.id)"
+        @open="openDetail"
         @play="recordPlay"
+        @toggle-favorite="onToggleFavorite"
       />
     </div>
+
+    <AssetDetailDrawer
+      v-if="selectedAssetId !== null"
+      :asset-id="selectedAssetId"
+      @close="selectedAssetId = null"
+      @play="recordPlay"
+      @updated="onAssetUpdated"
+    />
 
     <div v-if="!hasSearched && !search.isLoading" class="card text-center py-16">
       <svg class="w-16 h-16 text-surface-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,13 +172,17 @@
 import { ref, onMounted } from 'vue'
 import { useSearchStore } from '@/stores/search'
 import { useNowPlayingStore } from '@/stores/nowPlaying'
+import { useFavoritesStore } from '@/stores/favorites'
 import AssetCard from '@/components/AssetCard.vue'
+import AssetDetailDrawer from '@/components/AssetDetailDrawer.vue'
 import api from '@/api/axios'
 
 const search = useSearchStore()
 const nowPlaying = useNowPlayingStore()
+const favorites = useFavoritesStore()
 const hasSearched = ref(false)
 const tagInput = ref('')
+const selectedAssetId = ref(null)
 
 const showUploadModal = ref(false)
 const fileInput = ref(null)
@@ -176,11 +191,27 @@ const uploadError = ref('')
 const uploadSuccess = ref(false)
 const uploadForm = ref({ title: '', description: '', tags: '' })
 
-onMounted(() => loadAll())
+onMounted(() => {
+  loadAll()
+  favorites.load()
+})
 
 async function doSearch() {
   hasSearched.value = true
   await search.search()
+}
+
+function openDetail(assetId) {
+  selectedAssetId.value = assetId
+}
+
+async function onToggleFavorite(asset) {
+  await favorites.toggle(asset.id)
+}
+
+function onAssetUpdated(updated) {
+  const idx = search.results.findIndex((a) => a.id === updated.id)
+  if (idx >= 0) search.results[idx] = { ...search.results[idx], ...updated }
 }
 
 async function loadAll() {

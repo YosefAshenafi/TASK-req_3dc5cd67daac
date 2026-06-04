@@ -21,7 +21,13 @@
 
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <div v-for="item in favorites" :key="item.favorite_id" class="relative">
-        <AssetCard :asset="item.asset" @play="nowPlaying.recordPlay($event)" />
+        <AssetCard
+          :asset="item.asset"
+          :is-favorite="true"
+          @open="openDetail"
+          @play="nowPlaying.recordPlay($event)"
+          @toggle-favorite="() => removeFavorite(item.favorite_id)"
+        />
         <button
           @click="removeFavorite(item.favorite_id)"
           class="absolute top-3 right-3 text-red-400 hover:text-red-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
@@ -34,6 +40,14 @@
         </button>
       </div>
     </div>
+
+    <AssetDetailDrawer
+      v-if="selectedAssetId !== null"
+      :asset-id="selectedAssetId"
+      @close="selectedAssetId = null"
+      @play="nowPlaying.recordPlay($event)"
+      @updated="load"
+    />
   </div>
 </template>
 
@@ -42,11 +56,17 @@ import { ref, onMounted } from 'vue'
 import api from '@/api/axios'
 import { useNowPlayingStore } from '@/stores/nowPlaying'
 import AssetCard from '@/components/AssetCard.vue'
+import AssetDetailDrawer from '@/components/AssetDetailDrawer.vue'
 
 const favorites = ref([])
 const isLoading = ref(true)
 const error = ref(null)
+const selectedAssetId = ref(null)
 const nowPlaying = useNowPlayingStore()
+
+function openDetail(assetId) {
+  selectedAssetId.value = assetId
+}
 
 async function load() {
   isLoading.value = true

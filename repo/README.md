@@ -174,8 +174,11 @@ curl -X POST http://localhost:3000/api/device/events \
 2. Log in with `user` / `Password123!`.
 3. Click **Browse All** → confirm asset cards load.
 4. Change the sort to **Recommended** → confirm `recommendation_reason` text appears on cards.
-5. Navigate to **My Playlists** → create a playlist → confirm the 8-character share code appears on the card.
-6. Log out and log in as `admin` / `Password123!` → open **Admin → Monitoring** → confirm health blocks and p95 latency render.
+5. **Click any asset card** → a detail drawer opens showing every field (description, tags, type, size, duration, status, plays), not just the title.
+6. Click the **♥ heart** on a card (or the **Favorite** button in the drawer) → open **Favorites** and confirm the asset appears; toggle it off to remove it.
+7. Navigate to **My Playlists** → create a playlist → confirm the 8-character share code appears on the card.
+8. Log out and log in as `admin` / `Password123!` → open any asset's detail drawer → click **Edit**, change the **Title**, click **Save** → the detail view immediately shows the new value (regular users do not see the Edit control).
+9. Open **Admin → Monitoring** → confirm health blocks and p95 latency render.
 
 ---
 
@@ -209,6 +212,7 @@ Key endpoints:
 - `POST /api/playlists/redeem` — look up playlist by share code
 - `POST /api/device/events` — ingest device events (Bearer API key; `device_id` required; `replay_audit_id` must reference a valid `device_replay_audits.audit_key` for this device; stored with relational FK `replay_audit_fk`)
 - `POST /api/admin/device-replays` — create device replay audit record (admin only)
+- `PATCH /api/admin/assets/{id}` — update an asset's title, description, or tags (admin only)
 - `GET /api/recommendations` — personalized recommendations; each item includes `recommendation_reason` describing the affinity rationale (e.g., "Based on your favorites: Safety, Training")
 - `GET /api/admin/monitoring` — system health including API error rate, device ingestion counts, and degradation window metrics (admin only)
 

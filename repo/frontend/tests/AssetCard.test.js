@@ -60,10 +60,37 @@ describe('AssetCard', () => {
     expect(wrapper.text()).not.toContain('recommendation_reason')
   })
 
-  it('emits play event on click', async () => {
+  it('emits open event when the card is clicked', async () => {
     const wrapper = mount(AssetCard, { props: { asset: mockAudioAsset } })
     await wrapper.trigger('click')
+    expect(wrapper.emitted('open')).toBeTruthy()
+    expect(wrapper.emitted('open')[0]).toEqual([1])
+  })
+
+  it('emits play event from the Play button without opening the card', async () => {
+    const wrapper = mount(AssetCard, { props: { asset: mockAudioAsset } })
+    await wrapper.find('[data-testid="play-btn"]').trigger('click')
     expect(wrapper.emitted('play')).toBeTruthy()
     expect(wrapper.emitted('play')[0]).toEqual([1])
+    // .stop prevents the card's open emit from firing
+    expect(wrapper.emitted('open')).toBeFalsy()
+  })
+
+  it('emits toggle-favorite from the favorite button with the asset', async () => {
+    const wrapper = mount(AssetCard, { props: { asset: mockAudioAsset } })
+    await wrapper.find('[data-testid="favorite-btn"]').trigger('click')
+    expect(wrapper.emitted('toggle-favorite')).toBeTruthy()
+    expect(wrapper.emitted('toggle-favorite')[0][0].id).toBe(1)
+    expect(wrapper.emitted('open')).toBeFalsy()
+  })
+
+  it('reflects favorited state on the favorite button', () => {
+    const unfav = mount(AssetCard, { props: { asset: mockAudioAsset, isFavorite: false } })
+    expect(unfav.find('[data-testid="favorite-btn"]').attributes('aria-pressed')).toBe('false')
+    expect(unfav.find('[data-testid="favorite-btn"]').attributes('aria-label')).toContain('Add')
+
+    const fav = mount(AssetCard, { props: { asset: mockAudioAsset, isFavorite: true } })
+    expect(fav.find('[data-testid="favorite-btn"]').attributes('aria-pressed')).toBe('true')
+    expect(fav.find('[data-testid="favorite-btn"]').attributes('aria-label')).toContain('Remove')
   })
 })

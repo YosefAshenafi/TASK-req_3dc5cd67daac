@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: mysql:8.0
@@ -73,6 +71,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      backend:
+        condition: service_healthy
     volumes:
       - media_storage:/var/www/html/storage/app/media
     networks:
@@ -98,6 +98,8 @@ services:
       LOG_CHANNEL: stderr
     depends_on:
       db:
+        condition: service_healthy
+      backend:
         condition: service_healthy
     volumes:
       - media_storage:/var/www/html/storage/app/media

@@ -55,4 +55,36 @@ class AssetController extends Controller
 
         return response()->json(['data' => new AssetResource($asset->fresh())]);
     }
+
+    /**
+     * Update editable metadata (title, description, tags) of any asset.
+     * Administrators only — enforced by the `role:admin` route middleware.
+     * Uses `sometimes` so callers may send a partial payload; only the
+     * supplied fields are validated and persisted.
+     */
+    public function update(Request $request, Asset $asset): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => ['sometimes', 'required', 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'tags' => ['sometimes', 'nullable', 'array'],
+            'tags.*' => ['string', 'max:50'],
+        ]);
+
+        // Normalise an explicit null tags payload to an empty list so the
+        // JSON column stays a consistent array shape.
+        if (array_key_exists('tags', $data) && $data['tags'] === null) {
+            $data['tags'] = [];
+        }
+
+        $asset->update($data);
+
+        Log::info('admin_update_asset', [
+            'admin_id' => $request->user()->id,
+            'asset_id' => $asset->id,
+            'fields' => array_keys($data),
+        ]);
+
+        return response()->json(['data' => new AssetResource($asset->fresh())]);
+    }
 }

@@ -106,7 +106,7 @@ if docker run --rm \
     -w /tests \
     -e BASE_URL="http://frontend:80" \
     mcr.microsoft.com/playwright:v1.44.0-jammy \
-    bash -c "playwright test 2>&1"; then
+    bash -c "npx playwright test 2>&1"; then
     echo "E2E tests: PASSED"
     passed=$((passed + 1))
 else

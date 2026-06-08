@@ -5,5 +5,5 @@
   "backend_language": "PHP",
   "frontend_framework": "Vue.js 3",
   "backend_framework": "Laravel 11",
-  "database": "MySQL 8"
+  "database": "MySQL"
 }
